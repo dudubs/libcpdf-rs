@@ -4,6 +4,20 @@ const REPO: &str = "https://github.com/coherentgraphics/cpdflib-binary";
 
 #[tokio::main]
 async fn main() {
+    let pointer_width = match true {
+        cfg!(target_pointer_width = "32") => "32",
+        cfg!(target_pointer_width = "64") => "64",
+        _ => panic!("Unsuportted target pointer width."),
+    };
+
+    let libs_dir = PathBuf::from(file!())
+        .with_file_name("libs")
+        .to_str()
+        .unwrap()
+        .to_string();
+
+    println!("cargo:rustc-link-lib={libs_dir}/libcpdf-x{pointer_width}");
+
     let mode = if cfg!(debug_assertions) {
         "debug"
     } else {
@@ -16,18 +30,7 @@ async fn main() {
 
     let target_dll_path = target_dir.join(mode).join("libcpdf.dll");
 
-    if fs::metadata(&target_dll_path).is_ok() {
-        return;
-    }
-
-    let pointer_width = match true {
-        cfg!(target_pointer_width = "32") => "32",
-        cfg!(target_pointer_width = "64") => "64",
-        _ => panic!("Unsuportted target pointer width."),
-    };
-
     let source_dll_path = libs_dir.join(format!("libcpdf-x{pointer_width}.dll"));
-    println!("cargo:rustc-link-lib=libs/libcpdf-x{pointer_width}");
 
     download_binary(&source_dll_path, &pointer_width, false).await;
 

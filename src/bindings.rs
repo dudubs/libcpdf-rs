@@ -151,6 +151,7 @@ extern "C" {
         arg7: c_int,
     );
     pub fn cpdf_toMemory(arg1: c_int, arg2: c_int, arg3: c_int, arg4: *mut c_int) -> *mut c_void;
+    pub fn cpdf_free(arg: *mut c_void);
     pub fn cpdf_isEncrypted(arg1: c_int) -> c_int;
     pub fn cpdf_decryptPdf(arg1: c_int, arg2: *const c_char);
     pub fn cpdf_decryptPdfOwner(arg1: c_int, arg2: *const c_char);

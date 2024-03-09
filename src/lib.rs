@@ -1,14 +1,19 @@
-use crate::cpdf::Range;
+use document::Document;
+use range::Range;
 
 pub mod bindings;
-pub mod cpdf;
+pub mod core;
+pub mod document;
+pub mod error;
+pub mod range;
+mod tests;
 
 // cpdfrouter:load() cpdfrouter::save({close:true})
 #[test]
 fn dev() {
-    cpdf::startup();
+    core::startup();
 
-    cpdf::set_fast();
+    core::set_fast();
 
     // // unsafe { dbg!(cpdf_lastError) };
     // dbg!(cpdf::version().unwrap());
@@ -28,7 +33,7 @@ fn dev() {
     // println!("Hello, world!");
 }
 
-pub fn fit_to_width(file: &cpdf::File, width: f64) -> cpdf::Result<()> {
+pub fn fit_to_width(file: &Document, width: f64) -> core::Result<()> {
     for page_num in 1..file.num_pages()? + 1 {
         let media_box = file.get_media_box(page_num)?;
         let scale = width / media_box.width();

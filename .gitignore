@@ -1,3 +1,5 @@
 /target
 cpdf-binaries
 /libs/*.dll
+
+/testdata/_*
