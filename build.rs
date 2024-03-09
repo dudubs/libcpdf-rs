@@ -26,8 +26,8 @@ async fn main() {
         _ => panic!("Unsuportted target pointer width."),
     };
 
-    println!("cargo:rustc-link-lib=libs/libcpdf-x{pointer_width}");
     let source_dll_path = libs_dir.join(format!("libcpdf-x{pointer_width}.dll"));
+    println!("cargo:rustc-link-lib=libs/libcpdf-x{pointer_width}");
 
     download_binary(&source_dll_path, &pointer_width, false).await;
 

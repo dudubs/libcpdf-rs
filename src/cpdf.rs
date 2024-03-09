@@ -2,6 +2,7 @@ use std::{
     ffi::{CStr, CString, NulError},
     os::raw::{c_int, c_void},
     path::{Path, PathBuf},
+    ptr::null,
 };
 
 #[derive(Debug)]
@@ -11,18 +12,17 @@ pub enum Error {
     Message(String),
 }
 
+impl ToString for Error {
+    fn to_string(&self) -> String {
+        format!("{:?}", &self)
+    }
+}
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 use crate::bindings::*;
 
 pub fn startup() {
     unsafe {
-        cpdf_startup(
-            [
-                //
-                std::ptr::null(),
-            ]
-            .as_ptr(),
-        );
+        cpdf_startup([std::ptr::null()].as_ptr());
     };
 }
 
@@ -82,6 +82,14 @@ impl Range {
         Self::_new(|| unsafe { cpdf_range(page, page) })
     }
 
+    pub fn from(pages: &Vec<i32>) -> Result<Self> {
+        pages
+            .iter()
+            .map(|page| Self::only(*page))
+            .reduce(|a, b| a.and_then(|a| a.merge(b?)))
+            .ok_or_else(|| Error::Message("No pages".to_string()))?
+    }
+
     pub fn merge(self, other: Self) -> Result<Self> {
         Self::_new(|| unsafe { cpdf_rangeUnion(self.id, other.id) })
     }
@@ -106,7 +114,7 @@ impl Drop for File {
     }
 }
 impl File {
-    pub fn decrypt(&self, password: impl AsRef<str>) -> std::prelude::v1::Result<(), Error> {
+    pub fn decrypt(&self, password: impl AsRef<str>) -> Result<(), Error> {
         with_result(|| unsafe { Ok(cpdf_decryptPdf(self.id, to_const_char(password)?)) })
     }
 
@@ -149,6 +157,18 @@ impl File {
     pub fn scale_pages(&self, range: Range, scale_x: f64, scale_y: f64) -> Result<()> {
         with_result(|| Ok(unsafe { cpdf_scalePages(self.id, range.id, scale_x, scale_y) }))
     }
+
+    // TODO Check what happen if select pages is failed
+    pub fn select_pages(&self, range: Range) -> Result<File, Error> {
+        with_result(|| {
+            Ok(unsafe {
+                File {
+                    id: cpdf_selectPages(self.id, range.id),
+                }
+            })
+        })
+    }
+
     pub fn get_media_box(&self, page_num: i32) -> Result<Box> {
         let mut r#box = Box {
             min_x: 0.0,
@@ -171,6 +191,27 @@ impl File {
         })?;
 
         Ok(r#box)
+    }
+
+    pub fn merge(files: &Vec<File>, remove_duplicate_fonts: bool) -> Result<File, Error> {
+        let mut ids = files.iter().map(|file| file.id).collect::<Vec<_>>();
+
+        with_result(|| {
+            Ok(unsafe {
+                File {
+                    id: cpdf_merge(
+                        ids.as_mut_ptr(),
+                        ids.len() as i32,
+                        0,
+                        remove_duplicate_fonts as i32,
+                    ),
+                }
+            })
+        })
+    }
+
+    pub fn fit_to_width(&self, width: f64, deviation: f64) -> Result<bool> {
+        Ok(false)
     }
 }
 
