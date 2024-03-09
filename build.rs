@@ -1,4 +1,4 @@
-use std::fs;
+use std::{env::current_exe, fs, path::PathBuf};
 
 const REPO: &str = "https://github.com/coherentgraphics/cpdflib-binary";
 
@@ -10,9 +10,13 @@ async fn main() {
         "release"
     };
 
-    let target_path = format!("target/{mode}/libcpdf.dll");
+    let libs_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()).join("libs");
 
-    if fs::metadata(&target_path).is_ok() {
+    let target_dir = resolve_target_dir();
+
+    let target_dll_path = target_dir.join(mode).join("libcpdf.dll");
+
+    if fs::metadata(&target_dll_path).is_ok() {
         return;
     }
 
@@ -22,15 +26,24 @@ async fn main() {
         _ => panic!("Unsuportted target pointer width."),
     };
 
-    download_binary(&pointer_width, false).await;
     println!("cargo:rustc-link-lib=libs/libcpdf-x{pointer_width}");
+    let source_dll_path = libs_dir.join(format!("libcpdf-x{pointer_width}.dll"));
 
-    std::fs::copy(format!("libs/libcpdf-x{pointer_width}.dll"), &target_path).unwrap();
+    download_binary(&source_dll_path, &pointer_width, false).await;
+
+    std::fs::copy(&source_dll_path, &target_dll_path).unwrap();
 }
 
-async fn download_binary(pointer_width: &str, force: bool) {
-    let out_filename = format!("libs/libcpdf-x{pointer_width}.dll");
-    if !force && fs::metadata(&out_filename).is_ok() {
+fn resolve_target_dir() -> PathBuf {
+    let mut path = current_exe().unwrap();
+    while path.file_name().unwrap() != "target" {
+        path = path.parent().unwrap().to_path_buf();
+    }
+    path
+}
+
+async fn download_binary(dll_path: &PathBuf, pointer_width: &str, force: bool) {
+    if !force && fs::metadata(&dll_path).is_ok() {
         return;
     }
     let contents = reqwest::get(format!(
@@ -42,5 +55,5 @@ async fn download_binary(pointer_width: &str, force: bool) {
     .await
     .unwrap();
 
-    tokio::fs::write(out_filename, contents).await.unwrap();
+    tokio::fs::write(dll_path, contents).await.unwrap();
 }
