@@ -52,6 +52,18 @@ pub fn last_error<'a>() -> Option<&'a str> {
     None
 }
 
+pub fn last_result<'a>() -> Result<()> {
+    if unsafe { cpdf_fLastError() } != 0 {
+        let msg = unsafe { CStr::from_ptr(cpdf_fLastErrorString()) }
+            .to_str()
+            .map_err(Error::Utf8Error)?;
+
+        unsafe { cpdf_clearError() };
+        return Err(Error::Message(msg.to_string()));
+    }
+    Ok(())
+}
+
 pub fn with_result<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {
     unsafe { cpdf_clearError() };
     let val = match f() {
@@ -123,30 +135,22 @@ impl File {
     }
 
     pub fn from_file(path: impl AsRef<str>, password: impl AsRef<str>) -> Result<File> {
-        with_result(|| {
-            Ok(File {
-                id: unsafe {
-                    cpdf_fromFile(
-                        //
-                        to_const_char(path)?,
-                        to_const_char(password)?,
-                    )
-                },
-            })
+        Self::from_id(unsafe {
+            cpdf_fromFile(
+                //
+                to_const_char(path)?,
+                to_const_char(password)?,
+            )
         })
     }
 
     pub fn from_mem(data: Vec<u8>, password: impl AsRef<str>) -> Result<File> {
-        with_result(|| {
-            Ok(File {
-                id: unsafe {
-                    cpdf_fromMemory(
-                        data.as_ptr() as *mut c_void,
-                        data.len() as i32,
-                        to_const_char(password)?,
-                    )
-                },
-            })
+        Self::from_id(unsafe {
+            cpdf_fromMemory(
+                data.as_ptr() as *mut c_void,
+                data.len() as i32,
+                to_const_char(password)?,
+            )
         })
     }
 
@@ -158,15 +162,13 @@ impl File {
         with_result(|| Ok(unsafe { cpdf_scalePages(self.id, range.id, scale_x, scale_y) }))
     }
 
+    fn from_id(id: i32) -> Result<File> {
+        last_result().map(|_| File { id })
+    }
+
     // TODO Check what happen if select pages is failed
     pub fn select_pages(&self, range: Range) -> Result<File, Error> {
-        with_result(|| {
-            Ok(unsafe {
-                File {
-                    id: cpdf_selectPages(self.id, range.id),
-                }
-            })
-        })
+        Self::from_id(unsafe { cpdf_selectPages(self.id, range.id) })
     }
 
     pub fn get_media_box(&self, page_num: i32) -> Result<Box> {
