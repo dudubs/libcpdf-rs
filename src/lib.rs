@@ -1,5 +1,6 @@
-use document::Document;
-use range::Range;
+pub use document::*;
+pub use error::*;
+pub use range::*;
 
 pub mod bindings;
 pub mod core;
