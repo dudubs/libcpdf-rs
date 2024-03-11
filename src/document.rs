@@ -124,16 +124,18 @@ impl Document {
     }
 
     pub fn fit_to_width(&self, width: f64, max_deviation: f64) -> Result<bool> {
+        let mut did = false;
         for page_num in 1..self.num_pages()? + 1 {
             let media_box = self.get_media_box(page_num)?;
             let deviation = (media_box.width() - width).abs();
             if max_deviation > deviation {
                 continue;
             }
+            did = true;
             let scale = width / media_box.width();
             self.scale_pages(Range::only(page_num)?, scale, scale)?;
         }
-        Ok(false)
+        Ok(did)
     }
 }
 
