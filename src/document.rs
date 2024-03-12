@@ -1,10 +1,5 @@
 use core::slice;
-use std::{
-    ffi::{c_int, CStr, CString},
-    os::raw::c_void,
-    path::Path,
-    ptr,
-};
+use std::{ffi::c_int, os::raw::c_void};
 
 use crate::{
     bindings::*,
