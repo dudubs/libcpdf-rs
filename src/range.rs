@@ -1,6 +1,7 @@
 use crate::{
     bindings::{
-        cpdf_blankRange, cpdf_deleteRange, cpdf_even, cpdf_isInRange, cpdf_range, cpdf_rangeUnion,
+        cpdf_blankRange, cpdf_deleteRange, cpdf_even, cpdf_isInRange, cpdf_range, cpdf_rangeAdd,
+        cpdf_rangeUnion,
     },
     core::{with_result, Result},
     error::Error,
@@ -21,12 +22,17 @@ impl Range {
         Self::_new(|| unsafe { cpdf_range(page, page) })
     }
 
+    pub fn add(&mut self, page: i32) -> Result {
+        with_result(|| Ok(unsafe { cpdf_rangeAdd(self.id, page) }))?;
+        Ok(())
+    }
+
     pub fn from(pages: &Vec<i32>) -> Result<Self> {
-        pages
-            .iter()
-            .map(|page| Self::only(*page))
-            .reduce(|a, b| a.and_then(|a| a.merge(b?)))
-            .ok_or_else(|| Error::Message("No pages".to_string()))?
+        let mut range = Self::blank()?;
+        for page in pages {
+            range.add(page.clone())?;
+        }
+        Ok(range)
     }
 
     pub fn merge(self, other: Self) -> Result<Self> {

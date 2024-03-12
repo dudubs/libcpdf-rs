@@ -92,3 +92,14 @@ fn test_fit_to_with() -> Result {
 
     Ok(())
 }
+
+#[test]
+fn dev() -> Result {
+    startup()?;
+
+    let doc = Document::from_mem(std::fs::read("../../testdata/big.pdf").unwrap(), "")?;
+    let doc = doc.select_pages(Range::between(2, 72)?)?;
+    doc.to_vec()?;
+
+    Ok(())
+}
