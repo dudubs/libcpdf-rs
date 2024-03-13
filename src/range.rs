@@ -39,8 +39,8 @@ impl Range {
         Self::_new(|| unsafe { cpdf_rangeUnion(self.id, other.id) })
     }
 
-    pub fn even(page: i32) -> Result<Self> {
-        Self::_new(|| unsafe { cpdf_even(page) })
+    pub fn even(&self) -> Result<Self> {
+        Self::_new(|| unsafe { cpdf_even(self.id) })
     }
 
     pub fn has(&self, page: i32) -> Result<bool> {

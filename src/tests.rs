@@ -13,6 +13,7 @@ fn test_range() -> Result {
     assert_eq!(Range::only(1)?.has(2)?, false);
     assert_eq!(Range::only(1)?.merge(Range::only(2)?)?.has(2)?, true);
     assert_eq!(Range::only(1)?.merge(Range::only(3)?)?.has(2)?, false);
+
     Ok(())
 }
 
@@ -70,7 +71,7 @@ fn test_get_media_box() -> Result {
 }
 
 #[test]
-fn test_fit_to_with() -> Result {
+fn test_fit_to_width() -> Result {
     startup()?;
     let doc = Document::from_file("testdata/unfit.pdf", "")?;
 
@@ -90,5 +91,14 @@ fn test_fit_to_with() -> Result {
     assert_eq!(doc.get_media_box(1)?.width(), 205.0);
     assert_eq!(doc.get_media_box(2)?.width(), 205.0);
 
+    Ok(())
+}
+
+#[test]
+fn test_select_pages() -> Result {
+    startup()?;
+    let doc = Document::from_file("testdata/unfit.pdf", "")?;
+
+    assert_eq!(doc.select_pages(&Range::only(1)?)?.num_pages()?, 1);
     Ok(())
 }
