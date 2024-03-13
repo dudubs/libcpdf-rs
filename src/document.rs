@@ -68,13 +68,16 @@ impl Document {
         with_result(|| Ok(unsafe { cpdf_pages(self.id) }))
     }
 
-    pub fn scale_pages(&self, range: Range, scale_x: f64, scale_y: f64) -> Result<()> {
+    pub fn scale_pages(&self, range: &Range, scale_x: f64, scale_y: f64) -> Result<()> {
         with_result(|| Ok(unsafe { cpdf_scalePages(self.id, range.id, scale_x, scale_y) }))
     }
 
-    // TODO Check what happen if select pages is failed
-    pub fn select_pages(&self, range: Range) -> Result<Document, Error> {
+    pub fn select_pages(&self, range: &Range) -> Result<Document, Error> {
         Self::_from_id(unsafe { cpdf_selectPages(self.id, range.id) })
+    }
+
+    pub fn rotate_pages(&self, range: &Range, rotation: i32) -> Result {
+        with_result(|| Ok(unsafe { cpdf_rotateBy(self.id, range.id, rotation) }))
     }
 
     pub fn get_media_box(&self, page_num: i32) -> Result<Box> {
@@ -128,7 +131,7 @@ impl Document {
             }
             did = true;
             let scale = width / media_box.width();
-            self.scale_pages(Range::only(page_num)?, scale, scale)?;
+            self.scale_pages(&Range::only(page_num)?, scale, scale)?;
         }
         Ok(did)
     }
