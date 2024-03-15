@@ -22,15 +22,14 @@ impl Range {
         Self::_new(|| unsafe { cpdf_range(page, page) })
     }
 
-    pub fn add(&mut self, page: i32) -> Result {
-        with_result(|| Ok(unsafe { cpdf_rangeAdd(self.id, page) }))?;
-        Ok(())
+    pub fn add(&self, page: i32) -> Result<Self> {
+        Self::_new(|| (unsafe { cpdf_rangeAdd(self.id, page) }))
     }
 
     pub fn from(pages: &Vec<i32>) -> Result<Self> {
         let mut range = Self::blank()?;
         for page in pages {
-            range.add(page.clone())?;
+            range = range.add(page.clone())?;
         }
         Ok(range)
     }

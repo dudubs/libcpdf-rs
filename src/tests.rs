@@ -14,6 +14,9 @@ fn test_range() -> Result {
     assert_eq!(Range::only(1)?.merge(Range::only(2)?)?.has(2)?, true);
     assert_eq!(Range::only(1)?.merge(Range::only(3)?)?.has(2)?, false);
 
+    assert_eq!(Range::from(&vec![1, 3])?.has(1)?, true);
+    assert_eq!(Range::from(&vec![1, 3])?.has(2)?, false);
+    assert_eq!(Range::from(&vec![1, 3])?.has(3)?, true);
     Ok(())
 }
 
