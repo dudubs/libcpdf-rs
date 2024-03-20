@@ -105,3 +105,20 @@ fn test_select_pages() -> Result {
     assert_eq!(doc.select_pages(&Range::only(1)?)?.num_pages()?, 1);
     Ok(())
 }
+
+#[test]
+fn test_expect_to_rotate_and_fit() -> Result {
+    startup()?;
+    let doc = Document::from_file("testdata/2pages.pdf", "")?;
+    doc.fit_to_width(200.0, 0.0)?;
+    dbg!(doc.get_media_box(1)?.width());
+    dbg!(doc.get_media_box(2)?.width());
+    dbg!(doc.get_media_box(2)?.height());
+    doc.rotate_pages(&Range::only(2)?, 90)?;
+    let doc = Document::from_mem(doc.to_vec()?, "")?;
+    dbg!(doc.get_media_box(1)?.width());
+    dbg!(doc.get_media_box(2)?.width());
+    dbg!(doc.get_media_box(2)?.height());
+
+    Ok(())
+}
