@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::os::raw::*;
 
 pub type CpdfPermission = c_int;

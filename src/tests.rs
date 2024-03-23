@@ -47,12 +47,12 @@ fn test_from_mem() -> Result {
 }
 
 #[test]
-fn test_get_media_box() -> Result {
+fn test_media_box() -> Result {
     startup()?;
 
     let doc = Document::from_file("testdata/unfit.pdf", "")?;
     assert_eq!(
-        doc.get_media_box(1)?,
+        doc.media_box(1)?,
         Box {
             min_x: 0.0,
             min_y: 0.0,
@@ -61,7 +61,7 @@ fn test_get_media_box() -> Result {
         }
     );
     assert_eq!(
-        doc.get_media_box(2)?,
+        doc.media_box(2)?,
         Box {
             min_x: 0.0,
             min_y: 0.0,
@@ -81,18 +81,18 @@ fn test_fit_to_width() -> Result {
     doc.fit_to_width(200.0, 0.0)?;
 
     let doc = Document::from_mem(doc.to_vec()?, "")?;
-    assert_eq!(doc.get_media_box(1)?.width(), 200.0);
-    assert_eq!(doc.get_media_box(2)?.width(), 200.0);
+    assert_eq!(doc.media_box(1)?.width(), 200.0);
+    assert_eq!(doc.media_box(2)?.width(), 200.0);
 
     doc.fit_to_width(205.0, 6.0)?;
     let doc = Document::from_mem(doc.to_vec()?, "")?;
-    assert_eq!(doc.get_media_box(1)?.width(), 200.0);
-    assert_eq!(doc.get_media_box(2)?.width(), 200.0);
+    assert_eq!(doc.media_box(1)?.width(), 200.0);
+    assert_eq!(doc.media_box(2)?.width(), 200.0);
 
     doc.fit_to_width(205.0, 2.0)?;
     let doc = Document::from_mem(doc.to_vec()?, "")?;
-    assert_eq!(doc.get_media_box(1)?.width(), 205.0);
-    assert_eq!(doc.get_media_box(2)?.width(), 205.0);
+    assert_eq!(doc.media_box(1)?.width(), 205.0);
+    assert_eq!(doc.media_box(2)?.width(), 205.0);
 
     Ok(())
 }
@@ -111,14 +111,59 @@ fn test_expect_to_rotate_and_fit() -> Result {
     startup()?;
     let doc = Document::from_file("testdata/2pages.pdf", "")?;
     doc.fit_to_width(200.0, 0.0)?;
-    dbg!(doc.get_media_box(1)?.width());
-    dbg!(doc.get_media_box(2)?.width());
-    dbg!(doc.get_media_box(2)?.height());
+    dbg!(doc.media_box(1)?.width());
+    dbg!(doc.media_box(2)?.width());
+    dbg!(doc.media_box(2)?.height());
     doc.rotate_pages(&Range::only(2)?, 90)?;
     let doc = Document::from_mem(doc.to_vec()?, "")?;
-    dbg!(doc.get_media_box(1)?.width());
-    dbg!(doc.get_media_box(2)?.width());
-    dbg!(doc.get_media_box(2)?.height());
+    dbg!(doc.media_box(1)?.width());
+    dbg!(doc.media_box(2)?.width());
+    dbg!(doc.media_box(2)?.height());
+
+    Ok(())
+}
+
+#[test]
+fn test_page_size() -> Result {
+    startup()?;
+    let doc = Document::from_file("testdata/2pages.pdf", "")?;
+
+    let media_box = doc.media_box(1)?;
+    let mw = media_box.width();
+    let mh = media_box.height();
+    assert_ne!(mw, mh);
+
+    assert_eq!(doc.get_page_rotation(1)?, 0);
+    assert_eq!(doc.page_size(1)?, (mw, mh));
+
+    doc.rotate_pages(&Range::only(1)?, 1)?;
+    assert_eq!(doc.get_page_rotation(1)?, 1);
+    assert_eq!(doc.page_size(1)?, (mh, mw));
+
+    doc.rotate_pages(&Range::only(1)?, 1)?;
+    assert_eq!(doc.get_page_rotation(1)?, 2);
+    assert_eq!(doc.page_size(1)?, (mw, mh));
+
+    doc.rotate_pages(&Range::only(1)?, 1)?;
+    assert_eq!(doc.get_page_rotation(1)?, 3);
+    assert_eq!(doc.page_size(1)?, (mh, mw));
+
+    doc.rotate_pages(&Range::only(1)?, 1)?;
+    assert_eq!(doc.get_page_rotation(1)?, 0);
+    assert_eq!(doc.page_size(1)?, (mw, mh));
+
+    Ok(())
+}
+
+#[test]
+fn test_expect_fit_to_width_after_rotation() -> Result {
+    startup()?;
+    let doc = Document::from_file("testdata/2pages.pdf", "")?;
+
+    doc.rotate_pages(&Range::only(1)?, 1)?;
+    doc.fit_to_width(200.0, 0.0)?;
+
+    dbg!(doc.page_size(1)?, doc.page_size(2)?);
 
     Ok(())
 }

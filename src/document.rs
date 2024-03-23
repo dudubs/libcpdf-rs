@@ -76,11 +76,24 @@ impl Document {
         Self::_from_id(unsafe { cpdf_selectPages(self.id, range.id) })
     }
 
-    pub fn rotate_pages(&self, range: &Range, rotation: i32) -> Result {
-        with_result(|| Ok(unsafe { cpdf_rotateBy(self.id, range.id, rotation) }))
+    pub fn rotate_pages(&self, range: &Range, times: i32) -> Result {
+        with_result(|| Ok(unsafe { cpdf_rotateBy(self.id, range.id, times * 90) }))
     }
 
-    pub fn get_media_box(&self, page_num: i32) -> Result<Box> {
+    pub fn page_size(&self, page_num: i32) -> Result<(f64, f64)> {
+        let media_box = self.media_box(page_num)?;
+        let rotation = self.get_page_rotation(page_num)?;
+
+        let mut size = (media_box.width(), media_box.height());
+
+        if rotation == 1 || rotation == 3 {
+            size = (size.1, size.0)
+        }
+
+        Ok(size)
+    }
+
+    pub fn media_box(&self, page_num: i32) -> Result<Box> {
         let mut r#box = Box {
             min_x: 0.0,
             min_y: 0.0,
@@ -124,16 +137,20 @@ impl Document {
     pub fn fit_to_width(&self, width: f64, max_deviation: f64) -> Result<bool> {
         let mut did = false;
         for page_num in 1..self.num_pages()? + 1 {
-            let media_box = self.get_media_box(page_num)?;
-            let deviation = (media_box.width() - width).abs();
+            let page_width = self.page_size(page_num)?.0;
+            let deviation = (page_width - width).abs();
             if max_deviation > deviation {
                 continue;
             }
             did = true;
-            let scale = width / media_box.width();
+            let scale = width / page_width;
             self.scale_pages(&Range::only(page_num)?, scale, scale)?;
         }
         Ok(did)
+    }
+
+    pub fn get_page_rotation(&self, page_num: i32) -> Result<i32> {
+        with_result(|| Ok(unsafe { cpdf_getPageRotation(self.id, page_num) } / 90))
     }
 }
 

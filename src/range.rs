@@ -4,7 +4,6 @@ use crate::{
         cpdf_rangeUnion,
     },
     core::{with_result, Result},
-    error::Error,
 };
 
 pub struct Range {
@@ -15,9 +14,11 @@ impl Range {
     pub fn blank() -> Result<Range> {
         Self::_new(|| unsafe { cpdf_blankRange() })
     }
+
     pub fn between(start: i32, end: i32) -> Result<Self> {
         Self::_new(|| unsafe { cpdf_range(start, end) })
     }
+
     pub fn only(page: i32) -> Result<Self> {
         Self::_new(|| unsafe { cpdf_range(page, page) })
     }
