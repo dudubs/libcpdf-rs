@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-// xx
+// xxx
 pub fn build() {
     let pointer_width = get_target_pointer_width();
 
