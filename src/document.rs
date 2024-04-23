@@ -71,18 +71,22 @@ impl Document {
     pub fn scale_pages(&self, range: &Range, scale_x: f64, scale_y: f64) -> Result<()> {
         with_result(|| Ok(unsafe { cpdf_scalePages(self.id, range.id, scale_x, scale_y) }))
     }
+    pub fn scale_to_fit(&self, range: &Range, width: f64, height: f64, scale: f64) -> Result<()> {
+        with_result(|| Ok(unsafe { cpdf_scaleToFit(self.id, range.id, width, height, scale) }))
+    }
 
     pub fn select_pages(&self, range: &Range) -> Result<Document, Error> {
         Self::_from_id(unsafe { cpdf_selectPages(self.id, range.id) })
     }
 
     pub fn rotate_pages(&self, range: &Range, times: i32) -> Result {
+        assert!(3 >= times);
         with_result(|| Ok(unsafe { cpdf_rotateBy(self.id, range.id, times * 90) }))
     }
 
     pub fn page_size(&self, page_num: i32) -> Result<(f64, f64)> {
         let media_box = self.media_box(page_num)?;
-        let rotation = self.get_page_rotation(page_num)?;
+        let rotation = self.page_rotation(page_num)?;
 
         let mut size = (media_box.width(), media_box.height());
 
@@ -91,6 +95,23 @@ impl Document {
         }
 
         Ok(size)
+    }
+
+    pub fn media_size(&self, page_num: i32) -> Result<(f64, f64)> {
+        let b = self.media_box(page_num)?;
+        Ok((b.max_x - b.min_x, b.max_y - b.min_y))
+    }
+
+    pub fn view_size(&self, page_num: i32) -> Result<(f64, f64)> {
+        let (media_width, media_height) = self.media_size(page_num)?;
+        let is_fliped = self.page_rotation(page_num)? % 2 == 0;
+        let media_rel = if is_fliped {
+            media_width / media_height
+        } else {
+            1.0
+        };
+
+        Ok((media_width * media_rel, media_height * media_rel))
     }
 
     pub fn media_box(&self, page_num: i32) -> Result<Box> {
@@ -137,19 +158,47 @@ impl Document {
     pub fn fit_to_width(&self, width: f64, max_deviation: f64) -> Result<bool> {
         let mut did = false;
         for page_num in 1..self.num_pages()? + 1 {
-            let page_width = self.page_size(page_num)?.0;
-            let deviation = (page_width - width).abs();
-            if max_deviation > deviation {
-                continue;
-            }
+            // let page_width = self.page_size(page_num)?.0;
+            let (media_width, media_height) = self.media_size(page_num)?;
+            let is_fliped = self.page_rotation(page_num)? % 2 == 0;
+
+            let deviation = (media_width - width).abs();
+
+            // if max_deviation >= deviation {
+            //     continue;
+            // }
+
+            let media_rel = if is_fliped {
+                media_width / media_height
+            } else {
+                1.0
+            };
+
             did = true;
-            let scale = width / page_width;
+
+            let view_width = media_width / media_rel;
+
+            let mut scale = width / media_width;
+
+            if is_fliped {
+                scale /= media_rel
+            }
+
+            dbg!((
+                page_num,
+                is_fliped,
+                view_width,
+                width,
+                // deviation,
+                scale,
+                media_width / media_height
+            ));
             self.scale_pages(&Range::only(page_num)?, scale, scale)?;
         }
         Ok(did)
     }
 
-    pub fn get_page_rotation(&self, page_num: i32) -> Result<i32> {
+    pub fn page_rotation(&self, page_num: i32) -> Result<i32> {
         with_result(|| Ok(unsafe { cpdf_getPageRotation(self.id, page_num) } / 90))
     }
 }

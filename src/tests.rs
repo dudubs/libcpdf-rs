@@ -110,47 +110,76 @@ fn test_select_pages() -> Result {
 fn test_expect_to_rotate_and_fit() -> Result {
     startup()?;
     let doc = Document::from_file("testdata/2pages.pdf", "")?;
+
+    assert_ne!(doc.page_size(1)?.0, 200.0);
+    assert_ne!(doc.page_size(2)?.0, 200.0);
+
+    // first fit to 200
     doc.fit_to_width(200.0, 0.0)?;
-    dbg!(doc.media_box(1)?.width());
-    dbg!(doc.media_box(2)?.width());
-    dbg!(doc.media_box(2)?.height());
-    doc.rotate_pages(&Range::only(2)?, 90)?;
-    let doc = Document::from_mem(doc.to_vec()?, "")?;
-    dbg!(doc.media_box(1)?.width());
-    dbg!(doc.media_box(2)?.width());
-    dbg!(doc.media_box(2)?.height());
+    assert_eq!(doc.page_size(1)?.0, 200.0);
+    assert_eq!(doc.page_size(2)?.0, 200.0);
+    assert_ne!(doc.page_size(1)?.0, doc.media_box(1)?.height());
+    assert_ne!(doc.page_size(2)?.0, doc.media_box(2)?.height());
+
+    doc.rotate_pages(&Range::only(2)?, 1)?;
+    assert_eq!(doc.page_rotation(1)?, 0);
+    assert_eq!(doc.page_rotation(2)?, 1);
+    assert_eq!(doc.page_size(1)?.0, 200.0);
+    assert_eq!(doc.page_size(2)?.1, 200.0);
+    assert_ne!(doc.page_size(2)?.0, 200.0);
+
+    doc.fit_to_width(200.0, 0.0)?;
+    assert_eq!(doc.page_rotation(1)?, 0);
+    assert_eq!(doc.page_rotation(2)?, 1);
+    assert_eq!(doc.page_size(1)?.0, 200.0);
+    assert_eq!(doc.page_size(2)?.0, 200.0); // *diff
+    assert_ne!(doc.page_size(2)?.1, 200.0);
 
     Ok(())
 }
 
 #[test]
+fn test_dev() -> Result {
+    startup()?;
+    let doc = Document::from_file("testdata/debug.pdf", "")?;
+
+    doc.fit_to_width(200.0, 0.0)?;
+    doc.save_as("testdata/debug-dev.pdf")?;
+    Ok(())
+}
+#[test]
 fn test_page_size() -> Result {
     startup()?;
-    let doc = Document::from_file("testdata/2pages.pdf", "")?;
+    let doc = Document::from_file("testdata/3pages.pdf", "")?;
 
     let media_box = doc.media_box(1)?;
     let mw = media_box.width();
     let mh = media_box.height();
     assert_ne!(mw, mh);
 
-    assert_eq!(doc.get_page_rotation(1)?, 0);
+    assert_eq!(doc.page_rotation(1)?, 0);
     assert_eq!(doc.page_size(1)?, (mw, mh));
+    assert_eq!(doc.media_size(1)?, (mw, mh));
 
     doc.rotate_pages(&Range::only(1)?, 1)?;
-    assert_eq!(doc.get_page_rotation(1)?, 1);
+    assert_eq!(doc.page_rotation(1)?, 1);
     assert_eq!(doc.page_size(1)?, (mh, mw));
+    assert_eq!(doc.media_size(1)?, (mw, mh));
 
     doc.rotate_pages(&Range::only(1)?, 1)?;
-    assert_eq!(doc.get_page_rotation(1)?, 2);
+    assert_eq!(doc.page_rotation(1)?, 2);
     assert_eq!(doc.page_size(1)?, (mw, mh));
+    assert_eq!(doc.media_size(1)?, (mw, mh));
 
     doc.rotate_pages(&Range::only(1)?, 1)?;
-    assert_eq!(doc.get_page_rotation(1)?, 3);
+    assert_eq!(doc.page_rotation(1)?, 3);
     assert_eq!(doc.page_size(1)?, (mh, mw));
+    assert_eq!(doc.media_size(1)?, (mw, mh));
 
     doc.rotate_pages(&Range::only(1)?, 1)?;
-    assert_eq!(doc.get_page_rotation(1)?, 0);
+    assert_eq!(doc.page_rotation(1)?, 0);
     assert_eq!(doc.page_size(1)?, (mw, mh));
+    assert_eq!(doc.media_size(1)?, (mw, mh));
 
     Ok(())
 }
