@@ -276,12 +276,12 @@ extern "C" {
         arg22: c_int,
     );
     pub fn cpdf_addTextSimple(
-        arg1: c_int,
-        arg2: c_int,
-        arg3: *const c_char,
-        arg4: CpdfPosition,
-        arg5: CpdfFont,
-        arg6: f64,
+        pdf: c_int,
+        range: c_int,
+        text: *const c_char,
+        pos: CpdfPosition,
+        font: CpdfFont,
+        font_size: f64,
     );
     pub fn cpdf_removeText(arg1: c_int, arg2: c_int);
     pub fn cpdf_textWidth(arg1: CpdfFont, arg2: *const c_char) -> c_int;

@@ -1,6 +1,9 @@
 use super::core::*;
 use super::document::*;
 use super::range::*;
+use crate::bindings::CpdfPosition;
+use crate::bindings::CPDF_ANCHOR_DIAGONAL;
+use crate::bindings::CPDF_FONT_COURIER;
 
 const TESTDATA_1PAGES: &str = "testdata/1pages.pdf";
 const TESTDATA_2PAGES: &str = "testdata/2pages.pdf";
@@ -139,14 +142,49 @@ fn test_expect_to_rotate_and_fit() -> Result {
 }
 
 #[test]
-fn test_dev() -> Result {
+fn test_debug_fit_to_width() -> Result {
     startup()?;
-    let doc = Document::from_file("testdata/debug.pdf", "")?;
 
-    doc.fit_to_width(200.0, 0.0)?;
-    doc.save_as("testdata/debug-dev.pdf")?;
+    let mut vd = vec![];
+
+    for r in [
+        0,   //
+        90,  //
+        180, //
+        270, //
+    ] {
+        for (w, h) in [
+            (100.0, 300.0), // h>w
+            (200.0, 300.0), // h>w
+            (300.0, 300.0), // h>w
+            (400.0, 200.0), // w>h
+            (500.0, 200.0), // w>h
+        ] {
+            let d = Document::blank(1, w, h)?;
+            let x = if w > h { "w>h" } else { "h>w" };
+            d.rotate_pages(&Range::only(1)?, r / 90)?;
+            d.add_test_text(1, format!("{w}x{h} {r}° {x}"))?;
+            vd.push(d);
+        }
+    }
+
+    let d = Document::merge(&vd, false)?;
+
+    let fw = 100.0;
+    d.fit_to_width(fw, 0.0)?;
+
+    for page_num in 1..d.num_pages()? + 1 {
+        let (mw, mh) = d.media_size(page_num)?;
+        let (pw, _ph) = d.page_size(page_num)?;
+        assert_eq!(pw, fw);
+        dbg!((mw, mh));
+    }
+
+    d.save_as("testdata/_debug.pdf")?;
+
     Ok(())
 }
+
 #[test]
 fn test_page_size() -> Result {
     startup()?;
@@ -184,15 +222,18 @@ fn test_page_size() -> Result {
     Ok(())
 }
 
-#[test]
-fn test_expect_fit_to_width_after_rotation() -> Result {
-    startup()?;
-    let doc = Document::from_file("testdata/2pages.pdf", "")?;
-
-    doc.rotate_pages(&Range::only(1)?, 1)?;
-    doc.fit_to_width(200.0, 0.0)?;
-
-    dbg!(doc.page_size(1)?, doc.page_size(2)?);
-
-    Ok(())
+impl Document {
+    fn add_test_text(&self, page_num: i32, text: impl ToChars) -> Result {
+        self.add_text_simple(
+            &Range::only(page_num)?,
+            text,
+            CpdfPosition {
+                cpdf_anchor: CPDF_ANCHOR_DIAGONAL,
+                cpdf_coord1: 0.0,
+                cpdf_coord2: 0.0,
+            },
+            CPDF_FONT_COURIER,
+            12.0,
+        )
+    }
 }

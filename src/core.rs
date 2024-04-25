@@ -2,7 +2,7 @@ use std::{
     default,
     ffi::{CStr, CString},
     path::Path,
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 
 use crate::{
@@ -37,7 +37,7 @@ pub fn set_slow() {
     unsafe { cpdf_setSlow() }
 }
 
-pub fn last_error<'a>() -> Option<&'a str> {
+fn last_error<'a>() -> Option<&'a str> {
     if unsafe { cpdf_fLastError() } != 0 {
         let msg = unsafe { CStr::from_ptr(cpdf_fLastErrorString()) }
             .to_str()
@@ -66,9 +66,11 @@ pub fn with_result<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {
         panic!("Did you cleaned error before?");
     }
 
-    let val = match f() {
-        Ok(val) => val,
-        Err(err) => return Err(err),
+    let val = {
+        match f() {
+            Ok(val) => val,
+            Err(err) => return Err(err),
+        }
     };
 
     match last_error() {
