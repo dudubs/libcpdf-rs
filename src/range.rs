@@ -54,6 +54,6 @@ impl Range {
 
 impl Drop for Range {
     fn drop(&mut self) {
-        unsafe { cpdf_deleteRange(self.id) };
+        with_result(|| unsafe { Ok(cpdf_deleteRange(self.id)) }).unwrap();
     }
 }

@@ -6,7 +6,7 @@ use crate::{
     core::{with_result, Result, ToChars},
     error::Error,
     range::Range,
-    with_result_dev,
+    with_mutex,
 };
 
 #[derive(Debug)]
@@ -89,7 +89,7 @@ impl Document {
 
         let vec = unsafe { slice::from_raw_parts_mut(ptr as *mut _, length as usize) }.to_vec();
 
-        unsafe { cpdf_free(ptr) };
+        with_mutex(|| unsafe { cpdf_free(ptr) });
         Ok(vec)
     }
 

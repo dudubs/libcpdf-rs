@@ -33,13 +33,15 @@ fn test_range() -> Result {
 fn test_multithreads() {
     let x = (1..300)
         .map(|i| {
-            thread::spawn(move || {
-                startup().unwrap();
+            thread::spawn(move || -> super::core::Result<Document> {
+                startup()?;
 
-                let d = Document::from_file("testdata/3pages.pdf", "").unwrap();
+                // let d1 = Document::from_file("testdata/3pages.pdf", "").unwrap();
                 let d = Document::blank(1, 10.0, 10.0).unwrap();
-                thread::sleep(Duration::from_secs(1));
-                d
+                d.rotate_pages(&Range::only(1)?, 1)?;
+                // thread::sleep(Duration::from_secs(3));
+
+                Ok(d)
             })
         })
         .collect::<Vec<_>>()

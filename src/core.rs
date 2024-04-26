@@ -14,6 +14,14 @@ use crate::{
 };
 
 pub fn startup() -> Result {
+    // calls once
+    static M: Mutex<bool> = Mutex::new(false);
+    let mut m = M.lock().unwrap();
+    if *m {
+        return Ok(());
+    }
+    *m = true;
+
     with_result(|| {
         Ok(unsafe {
             cpdf_startup([std::ptr::null()].as_ptr());
@@ -21,7 +29,7 @@ pub fn startup() -> Result {
     })
 }
 
-fn with_mutex<T>(cb: impl FnOnce() -> T) -> T {
+pub fn with_mutex<T>(cb: impl FnOnce() -> T) -> T {
     static M: Mutex<()> = Mutex::new(());
     let _mg = M.lock().unwrap();
     cb()
@@ -53,11 +61,6 @@ unsafe fn _last_error<'a>() -> Option<&'a str> {
         return msg;
     }
     None
-}
-
-#[macro_export]
-macro_rules! with_result_dev {
-    () => {};
 }
 
 pub fn with_result<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {

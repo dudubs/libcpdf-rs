@@ -9,6 +9,3 @@ pub use core::*;
 pub use document::*;
 pub use error::*;
 pub use range::*;
-
-#[test]
-fn test() {}
