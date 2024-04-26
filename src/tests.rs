@@ -1,3 +1,8 @@
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::thread;
+use std::time::Duration;
+
 use super::core::*;
 use super::document::*;
 use super::range::*;
@@ -9,6 +14,7 @@ const TESTDATA_1PAGES: &str = "testdata/1pages.pdf";
 const TESTDATA_2PAGES: &str = "testdata/2pages.pdf";
 
 #[test]
+
 fn test_range() -> Result {
     startup()?;
 
@@ -21,6 +27,25 @@ fn test_range() -> Result {
     assert_eq!(Range::from(&vec![1, 3])?.has(2)?, false);
     assert_eq!(Range::from(&vec![1, 3])?.has(3)?, true);
     Ok(())
+}
+
+#[test]
+fn test_multithreads() {
+    let x = (1..300)
+        .map(|i| {
+            thread::spawn(move || {
+                startup().unwrap();
+
+                let d = Document::from_file("testdata/3pages.pdf", "").unwrap();
+                let d = Document::blank(1, 10.0, 10.0).unwrap();
+                thread::sleep(Duration::from_secs(1));
+                d
+            })
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .map(|jh| jh.join().unwrap())
+        .collect::<Vec<_>>();
 }
 
 #[test]

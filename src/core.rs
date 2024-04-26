@@ -21,6 +21,12 @@ pub fn startup() -> Result {
     })
 }
 
+fn with_mutex<T>(cb: impl FnOnce() -> T) -> T {
+    static M: Mutex<()> = Mutex::new(());
+    let _mg = M.lock().unwrap();
+    cb()
+}
+
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
 pub fn version<'a>() -> Result<&'a str, Error> {
@@ -37,46 +43,41 @@ pub fn set_slow() {
     unsafe { cpdf_setSlow() }
 }
 
-fn last_error<'a>() -> Option<&'a str> {
-    if unsafe { cpdf_fLastError() } != 0 {
+unsafe fn _last_error<'a>() -> Option<&'a str> {
+    if cpdf_fLastError() != 0 {
         let msg = unsafe { CStr::from_ptr(cpdf_fLastErrorString()) }
             .to_str()
             .ok();
 
-        unsafe { cpdf_clearError() };
+        cpdf_clearError();
         return msg;
     }
     None
 }
 
-pub fn last_result<'a>() -> Result<(), Error> {
-    if unsafe { cpdf_fLastError() } != 0 {
-        let msg = unsafe { CStr::from_ptr(cpdf_fLastErrorString()) }
-            .to_str()
-            .map_err(Error::Utf8Error)?;
-
-        unsafe { cpdf_clearError() };
-        return Err(Error::Message(msg.to_string()));
-    }
-    Ok(())
+#[macro_export]
+macro_rules! with_result_dev {
+    () => {};
 }
 
 pub fn with_result<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {
-    if last_error().is_some() {
-        panic!("Did you cleaned error before?");
-    }
-
-    let val = {
-        match f() {
-            Ok(val) => val,
-            Err(err) => return Err(err),
+    with_mutex(|| {
+        if unsafe { _last_error().is_some() } {
+            panic!("Did you cleaned error before?");
         }
-    };
 
-    match last_error() {
-        Some(err) => Err(Error::Message(err.to_string())),
-        None => Ok(val),
-    }
+        let val = {
+            match f() {
+                Ok(val) => val,
+                Err(err) => return Err(err),
+            }
+        };
+
+        match unsafe { _last_error() } {
+            Some(err) => Err(Error::Message(err.to_string())),
+            None => Ok(val),
+        }
+    })
 }
 
 pub fn to_const_char(s: impl AsRef<str>) -> Result<*const i8> {

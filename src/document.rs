@@ -3,9 +3,10 @@ use std::{ffi::c_int, os::raw::c_void};
 
 use crate::{
     bindings::*,
-    core::{last_result, with_result, Result, ToChars},
+    core::{with_result, Result, ToChars},
     error::Error,
     range::Range,
+    with_result_dev,
 };
 
 #[derive(Debug)]
@@ -15,37 +16,39 @@ pub struct Document {
 
 impl Drop for Document {
     fn drop(&mut self) {
-        unsafe { cpdf_deletePdf(self.id) };
+        with_result(|| unsafe { Ok(cpdf_deletePdf(self.id)) }).unwrap();
     }
 }
 
 impl Document {
     pub fn from_file(path: impl ToChars, password: impl ToChars) -> Result<Document> {
-        Self::_from_id(unsafe {
-            cpdf_fromFile(
-                //
-                path.to_chars()?,
-                password.to_chars()?,
-            )
+        Self::_from_id(|| {
+            Ok(unsafe {
+                cpdf_fromFile(
+                    //
+                    path.to_chars()?,
+                    password.to_chars()?,
+                )
+            })
         })
     }
 
     pub fn blank(num_pages: i32, width: f64, height: f64) -> Result<Document> {
-        Self::_from_id(unsafe { cpdf_blankDocument(width, height, num_pages) })
+        Self::_from_id(|| unsafe { Ok(cpdf_blankDocument(width, height, num_pages)) })
     }
 
     pub fn from_mem(data: Vec<u8>, password: impl ToChars) -> Result<Document> {
-        Self::_from_id(unsafe {
-            cpdf_fromMemory(
+        Self::_from_id(|| unsafe {
+            Ok(cpdf_fromMemory(
                 data.as_ptr() as *mut c_void,
                 data.len() as i32,
                 password.to_chars()?,
-            )
+            ))
         })
     }
 
-    fn _from_id(id: i32) -> Result<Document> {
-        last_result().map(|_| Document { id })
+    fn _from_id(get_id: impl FnOnce() -> Result<i32>) -> Result<Self> {
+        with_result(|| Ok(Self { id: get_id()? }))
     }
 
     pub fn decrypt(&self, password: impl ToChars) -> Result {
@@ -102,8 +105,8 @@ impl Document {
         with_result(|| Ok(unsafe { cpdf_scaleToFit(self.id, range.id, width, height, scale) }))
     }
 
-    pub fn select_pages(&self, range: &Range) -> Result<Document, Error> {
-        Self::_from_id(unsafe { cpdf_selectPages(self.id, range.id) })
+    pub fn select_pages(&self, range: &Range) -> Result<Document> {
+        Self::_from_id(|| Ok(unsafe { cpdf_selectPages(self.id, range.id) }))
     }
 
     pub fn rotate_pages(&self, range: &Range, times: i32) -> Result {
