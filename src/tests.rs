@@ -1,7 +1,6 @@
-use std::sync::Arc;
-use std::sync::Mutex;
+#![cfg(test)]
+
 use std::thread;
-use std::time::Duration;
 
 use super::core::*;
 use super::document::*;
@@ -10,11 +9,7 @@ use crate::bindings::CpdfPosition;
 use crate::bindings::CPDF_ANCHOR_DIAGONAL;
 use crate::bindings::CPDF_FONT_COURIER;
 
-const TESTDATA_1PAGES: &str = "testdata/1pages.pdf";
-const TESTDATA_2PAGES: &str = "testdata/2pages.pdf";
-
 #[test]
-
 fn test_range() -> Result {
     startup()?;
 
@@ -31,7 +26,7 @@ fn test_range() -> Result {
 
 #[test]
 fn test_multithreads() {
-    let x = (1..300)
+    let _ = (1..300)
         .map(|i| {
             thread::spawn(move || -> super::core::Result<Document> {
                 startup()?;
@@ -54,8 +49,14 @@ fn test_multithreads() {
 fn test_file_from_file() -> Result {
     startup()?;
 
-    assert_eq!(Document::from_file(TESTDATA_1PAGES, "")?.num_pages()?, 1);
-    assert_eq!(Document::from_file(TESTDATA_2PAGES, "")?.num_pages()?, 2);
+    assert_eq!(
+        Document::from_file("testdata/1pages.pdf", "")?.num_pages()?,
+        1
+    );
+    assert_eq!(
+        Document::from_file("testdata/2pages.pdf", "")?.num_pages()?,
+        2
+    );
 
     Ok(())
 }
@@ -65,11 +66,11 @@ fn test_from_mem() -> Result {
     startup()?;
 
     assert_eq!(
-        Document::from_mem(std::fs::read(TESTDATA_1PAGES)?, "")?.num_pages()?,
+        Document::from_mem(std::fs::read("testdata/1pages.pdf")?, "")?.num_pages()?,
         1
     );
     assert_eq!(
-        Document::from_mem(std::fs::read(TESTDATA_2PAGES)?, "")?.num_pages()?,
+        Document::from_mem(std::fs::read("testdata/2pages.pdf")?, "")?.num_pages()?,
         2
     );
 
@@ -207,7 +208,7 @@ fn test_debug_fit_to_width() -> Result {
         dbg!((mw, mh));
     }
 
-    d.save_as("testdata/_debug.pdf")?;
+    // d.save_as("testdata/_debug.pdf")?;
 
     Ok(())
 }

@@ -3,10 +3,11 @@ use std::{ffi::c_int, os::raw::c_void};
 
 use crate::{
     bindings::*,
-    core::{with_result, Result, ToChars},
+    core::{Result, ToChars},
     error::Error,
+    from_id,
     range::Range,
-    with_mutex,
+    with_result,
 };
 
 #[derive(Debug)]
@@ -16,47 +17,33 @@ pub struct Document {
 
 impl Drop for Document {
     fn drop(&mut self) {
-        with_result(|| unsafe { Ok(cpdf_deletePdf(self.id)) }).unwrap();
+        with_result!(cpdf_deletePdf(self.id)).unwrap();
     }
 }
 
 impl Document {
-    pub fn from_file(path: impl ToChars, password: impl ToChars) -> Result<Document> {
-        Self::_from_id(|| {
-            Ok(unsafe {
-                cpdf_fromFile(
-                    //
-                    path.to_chars()?,
-                    password.to_chars()?,
-                )
-            })
-        })
+    pub fn from_file(path: impl ToChars, password: impl ToChars) -> Result<Self> {
+        from_id!(cpdf_fromFile(path.to_chars()?, password.to_chars()?,))
     }
 
-    pub fn blank(num_pages: i32, width: f64, height: f64) -> Result<Document> {
-        Self::_from_id(|| unsafe { Ok(cpdf_blankDocument(width, height, num_pages)) })
+    pub fn blank(num_pages: i32, width: f64, height: f64) -> Result<Self> {
+        from_id!(cpdf_blankDocument(width, height, num_pages))
     }
 
-    pub fn from_mem(data: Vec<u8>, password: impl ToChars) -> Result<Document> {
-        Self::_from_id(|| unsafe {
-            Ok(cpdf_fromMemory(
-                data.as_ptr() as *mut c_void,
-                data.len() as i32,
-                password.to_chars()?,
-            ))
-        })
-    }
-
-    fn _from_id(get_id: impl FnOnce() -> Result<i32>) -> Result<Self> {
-        with_result(|| Ok(Self { id: get_id()? }))
+    pub fn from_mem(data: Vec<u8>, password: impl ToChars) -> Result<Self> {
+        from_id!(cpdf_fromMemory(
+            data.as_ptr() as *mut c_void,
+            data.len() as i32,
+            password.to_chars()?,
+        ))
     }
 
     pub fn decrypt(&self, password: impl ToChars) -> Result {
-        with_result(|| unsafe { Ok(cpdf_decryptPdf(self.id, password.to_chars()?)) })
+        with_result!(cpdf_decryptPdf(self.id, password.to_chars()?))
     }
 
     pub fn save_as(&self, path: impl ToChars) -> Result {
-        with_result(|| Ok(unsafe { cpdf_toFile(self.id, path.to_chars()?, 0, 0) })).map(|_| ())
+        with_result!(cpdf_toFile(self.id, path.to_chars()?, 0, 0)).map(|_| ())
     }
 
     pub fn add_text_simple(
@@ -67,51 +54,46 @@ impl Document {
         font: CpdfFont,
         font_size: f64,
     ) -> Result {
-        with_result(|| {
-            Ok(unsafe {
-                cpdf_addTextSimple(
-                    //
-                    self.id,
-                    range.id,
-                    text.to_chars()?,
-                    pos,
-                    font,
-                    font_size,
-                )
-            })
-        })
+        with_result!(cpdf_addTextSimple(
+            //
+            self.id,
+            range.id,
+            text.to_chars()?,
+            pos,
+            font,
+            font_size,
+        ))
     }
     pub fn to_vec(&self) -> Result<Vec<u8>> {
         let mut length: i32 = 0;
 
-        let ptr =
-            with_result(|| Ok(unsafe { cpdf_toMemory(self.id, 0, 0, &mut length as *mut c_int) }))?;
+        let ptr = with_result!(cpdf_toMemory(self.id, 0, 0, &mut length as *mut c_int))?;
 
         let vec = unsafe { slice::from_raw_parts_mut(ptr as *mut _, length as usize) }.to_vec();
 
-        with_mutex(|| unsafe { cpdf_free(ptr) });
+        with_result!(cpdf_free(ptr))?;
         Ok(vec)
     }
 
     pub fn num_pages(&self) -> Result<i32> {
-        with_result(|| Ok(unsafe { cpdf_pages(self.id) }))
+        with_result!(cpdf_pages(self.id))
     }
 
     pub fn scale_pages(&self, range: &Range, scale_x: f64, scale_y: f64) -> Result<()> {
-        with_result(|| Ok(unsafe { cpdf_scalePages(self.id, range.id, scale_x, scale_y) }))
+        with_result!(cpdf_scalePages(self.id, range.id, scale_x, scale_y))
     }
 
     pub fn scale_to_fit(&self, range: &Range, width: f64, height: f64, scale: f64) -> Result<()> {
-        with_result(|| Ok(unsafe { cpdf_scaleToFit(self.id, range.id, width, height, scale) }))
+        with_result!(cpdf_scaleToFit(self.id, range.id, width, height, scale))
     }
 
-    pub fn select_pages(&self, range: &Range) -> Result<Document> {
-        Self::_from_id(|| Ok(unsafe { cpdf_selectPages(self.id, range.id) }))
+    pub fn select_pages(&self, range: &Range) -> Result<Self> {
+        from_id!(cpdf_selectPages(self.id, range.id))
     }
 
     pub fn rotate_pages(&self, range: &Range, times: i32) -> Result {
         assert!(3 >= times);
-        with_result(|| Ok(unsafe { cpdf_rotateBy(self.id, range.id, times * 90) }))
+        with_result!(cpdf_rotateBy(self.id, range.id, times * 90))
     }
 
     pub fn page_size(&self, page_num: i32) -> Result<(f64, f64)> {
@@ -140,37 +122,26 @@ impl Document {
             max_y: 0.0,
         };
 
-        with_result(|| {
-            Ok(unsafe {
-                cpdf_getMediaBox(
-                    self.id,
-                    page_num,
-                    &mut r#box.min_x as *mut f64,
-                    &mut r#box.max_x as *mut f64,
-                    &mut r#box.min_y as *mut f64,
-                    &mut r#box.max_y as *mut f64,
-                )
-            })
-        })?;
+        with_result!(cpdf_getMediaBox(
+            self.id,
+            page_num,
+            &mut r#box.min_x as *mut f64,
+            &mut r#box.max_x as *mut f64,
+            &mut r#box.min_y as *mut f64,
+            &mut r#box.max_y as *mut f64,
+        ))?;
 
         Ok(r#box)
     }
 
     pub fn merge(files: &Vec<Document>, remove_duplicate_fonts: bool) -> Result<Document, Error> {
         let mut ids = files.iter().map(|file| file.id).collect::<Vec<_>>();
-
-        with_result(|| {
-            Ok(unsafe {
-                Document {
-                    id: cpdf_merge(
-                        ids.as_mut_ptr(),
-                        ids.len() as i32,
-                        0,
-                        remove_duplicate_fonts as i32,
-                    ),
-                }
-            })
-        })
+        from_id!(cpdf_merge(
+            ids.as_mut_ptr(),
+            ids.len() as i32,
+            0,
+            remove_duplicate_fonts as i32,
+        ))
     }
 
     pub fn fit_to_width(&self, width: f64, max_deviation: f64) -> Result<bool> {
@@ -203,7 +174,7 @@ impl Document {
 
     // can returned 0,1,2,3
     pub fn page_rotation(&self, page_num: i32) -> Result<i32> {
-        with_result(|| Ok(unsafe { cpdf_getPageRotation(self.id, page_num) } / 90))
+        with_result!(cpdf_getPageRotation(self.id, page_num) / 90)
     }
 }
 

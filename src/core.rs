@@ -1,5 +1,4 @@
 use std::{
-    default,
     ffi::{CStr, CString},
     path::Path,
     sync::{Arc, Mutex, RwLock},
@@ -13,23 +12,7 @@ use crate::{
     error::Error,
 };
 
-pub fn startup() -> Result {
-    // calls once
-    static M: Mutex<bool> = Mutex::new(false);
-    let mut m = M.lock().unwrap();
-    if *m {
-        return Ok(());
-    }
-    *m = true;
-
-    with_result(|| {
-        Ok(unsafe {
-            cpdf_startup([std::ptr::null()].as_ptr());
-        })
-    })
-}
-
-pub fn with_mutex<T>(cb: impl FnOnce() -> T) -> T {
+fn with_mutex<T>(cb: impl FnOnce() -> T) -> T {
     static M: Mutex<()> = Mutex::new(());
     let _mg = M.lock().unwrap();
     cb()
@@ -37,35 +20,37 @@ pub fn with_mutex<T>(cb: impl FnOnce() -> T) -> T {
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
-pub fn version<'a>() -> Result<&'a str, Error> {
-    unsafe { CStr::from_ptr(cpdf_version()) }
-        .to_str()
-        .map_err(Error::Utf8Error)
+#[macro_export]
+macro_rules! with_result {
+    ($e:expr) => {
+        $crate::core::__with_result(|| {
+            #[allow(unused_unsafe)]
+            Ok(unsafe { $e })
+        })
+    };
 }
 
-pub fn set_fast() {
-    unsafe { cpdf_setFast() }
+#[macro_export]
+macro_rules! from_id {
+    ($e:expr) => {{
+        Ok(Self {
+            id: with_result!($e)?,
+        })
+    }};
 }
-
-pub fn set_slow() {
-    unsafe { cpdf_setSlow() }
-}
-
-unsafe fn _last_error<'a>() -> Option<&'a str> {
-    if cpdf_fLastError() != 0 {
-        let msg = unsafe { CStr::from_ptr(cpdf_fLastErrorString()) }
-            .to_str()
-            .ok();
+pub fn __with_result<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {
+    unsafe fn last_error<'a>() -> Option<&'a str> {
+        if cpdf_fLastError() == 0 {
+            return None;
+        }
+        let msg = CStr::from_ptr(cpdf_fLastErrorString()).to_str().ok();
 
         cpdf_clearError();
         return msg;
     }
-    None
-}
 
-pub fn with_result<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {
     with_mutex(|| {
-        if unsafe { _last_error().is_some() } {
+        if unsafe { last_error().is_some() } {
             panic!("Did you cleaned error before?");
         }
 
@@ -76,7 +61,7 @@ pub fn with_result<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {
             }
         };
 
-        match unsafe { _last_error() } {
+        match unsafe { last_error() } {
             Some(err) => Err(Error::Message(err.to_string())),
             None => Ok(val),
         }
@@ -114,4 +99,22 @@ impl ToChars for Path {
 
         Ok(CString::new(s)?.into_raw())
     }
+}
+
+pub fn set_fast() -> Result<()> {
+    with_result!(cpdf_setFast())
+}
+
+pub fn set_slow() -> Result<()> {
+    with_result!(cpdf_setSlow())
+}
+
+pub fn version<'a>() -> Result<&'a str> {
+    unsafe { CStr::from_ptr(with_result!(cpdf_version())?) }
+        .to_str()
+        .map_err(Error::Utf8Error)
+}
+
+pub fn startup() -> Result {
+    with_result!(cpdf_startup([std::ptr::null()].as_ptr()))
 }
