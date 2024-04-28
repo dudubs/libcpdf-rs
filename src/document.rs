@@ -1,5 +1,5 @@
 use core::slice;
-use std::{ffi::c_int, os::raw::c_void};
+use std::{collections::BTreeSet, ffi::c_int, os::raw::c_void};
 
 use crate::{
     bindings::*,
@@ -91,20 +91,24 @@ impl Document {
         from_id!(cpdf_selectPages(self.id, range.id))
     }
 
-    pub fn move_pages(
-        &self,
-        before: i32,
-        pages: impl IntoIterator<Item = i32>,
-    ) -> Result<Document> {
+    pub fn move_pages(&self, after: i32, pages: impl IntoIterator<Item = i32>) -> Result<Document> {
         let mut pages_before = vec![];
         let mut pages_after = vec![];
         let pages = pages
             .into_iter()
-            .filter(|&p| p != before)
-            .collect::<Vec<_>>();
+            .filter(|&p| p != after)
+            .collect::<BTreeSet<_>>();
+
+        if pages.len() == 0 {
+            return Err(Error::NoPagesToMove);
+        }
 
         for page in self.pages()? {
-            if page > before {
+            if pages.contains(&page) {
+                continue;
+            }
+
+            if page > after {
                 pages_after.push(page);
             } else {
                 pages_before.push(page);
@@ -112,7 +116,11 @@ impl Document {
         }
 
         let mut docs = vec![];
-        for group in [pages_before, pages, pages_after] {
+        for group in [
+            pages_before,
+            pages.into_iter().collect::<Vec<_>>(),
+            pages_after,
+        ] {
             if group.len() == 0 {
                 continue;
             }

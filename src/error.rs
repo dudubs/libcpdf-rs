@@ -15,4 +15,7 @@ pub enum Error {
 
     #[error("{0}")]
     Message(String),
+
+    #[error("no pages to move")]
+    NoPagesToMove,
 }

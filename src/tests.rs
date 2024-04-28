@@ -29,7 +29,7 @@ fn test_range_all() -> Result {
     startup()?;
 
     let doc = Document::blank(3, 1.0, 1.0)?;
-    let r = Range::all(doc)?;
+    let r = Range::all(&doc)?;
 
     assert_eq!(r.has(1)?, true);
     assert_eq!(r.has(2)?, true);
@@ -213,7 +213,7 @@ fn test_debug_fit_to_width() -> Result {
             let d = Document::blank(1, w, h)?;
             let x = if w > h { "w>h" } else { "h>w" };
             d.rotate_pages(&Range::only(1)?, r / 90)?;
-            d.add_test_text(1, format!("{w}x{h} {r}° {x}"))?;
+            add_test_text(&d, 1, format!("{w}x{h} {r}° {x}"))?;
             vd.push(d);
         }
     }
@@ -272,18 +272,59 @@ fn test_page_size() -> Result {
     Ok(())
 }
 
-impl Document {
-    fn add_test_text(&self, page_num: i32, text: impl ToChars) -> Result {
-        self.add_text_simple(
-            &Range::only(page_num)?,
-            text,
-            CpdfPosition {
-                cpdf_anchor: CPDF_ANCHOR_DIAGONAL,
-                cpdf_coord1: 0.0,
-                cpdf_coord2: 0.0,
-            },
-            CPDF_FONT_COURIER,
-            12.0,
-        )
+fn add_test_text(doc: &Document, page_num: i32, text: impl ToChars) -> Result {
+    doc.add_text_simple(
+        &Range::only(page_num)?,
+        text,
+        CpdfPosition {
+            cpdf_anchor: CPDF_ANCHOR_DIAGONAL,
+            cpdf_coord1: 0.0,
+            cpdf_coord2: 0.0,
+        },
+        CPDF_FONT_COURIER,
+        12.0,
+    )
+}
+
+#[test]
+fn expect_to_move_pages() -> Result {
+    startup()?;
+
+    fn stat(d: &Document) -> Result<Vec<i32>> {
+        Ok(d.pages()?
+            .flat_map(|p| d.page_size(p))
+            .map(|p| p.0 as i32)
+            .collect::<Vec<_>>())
     }
+
+    let d: Document = {
+        let d = Document::blank(5, 1.0, 1.0)?;
+
+        for page in d.pages()? {
+            let scale = page as f64;
+            d.scale_pages(&Range::only(page)?, scale, scale)?;
+        }
+
+        assert_eq!(stat(&d)?, [1, 2, 3, 4, 5]);
+        d
+    };
+
+    assert_eq!(stat(&d.move_pages(0, [2, 3])?)?, [2, 3, 1, 4, 5]);
+    assert_eq!(stat(&d.move_pages(1, [2, 3])?)?, [1, 2, 3, 4, 5]);
+    assert_eq!(stat(&d.move_pages(2, [2, 3])?)?, [1, 2, 3, 4, 5]);
+    assert_eq!(stat(&d.move_pages(3, [2, 3])?)?, [1, 3, 2, 4, 5]);
+    assert_eq!(stat(&d.move_pages(4, [2, 3])?)?, [1, 4, 2, 3, 5]);
+    assert_eq!(stat(&d.move_pages(5, [2, 3])?)?, [1, 4, 5, 2, 3]);
+
+    assert!(matches!(
+        &d.move_pages(2, [2]),
+        Err(super::error::Error::NoPagesToMove)
+    ));
+
+    assert!(matches!(
+        &d.move_pages(2, []),
+        Err(super::error::Error::NoPagesToMove)
+    ));
+
+    Ok(())
 }
