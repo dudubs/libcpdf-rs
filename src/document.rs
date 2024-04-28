@@ -91,6 +91,43 @@ impl Document {
         from_id!(cpdf_selectPages(self.id, range.id))
     }
 
+    pub fn move_pages(
+        &self,
+        before: i32,
+        pages: impl IntoIterator<Item = i32>,
+    ) -> Result<Document> {
+        let mut pages_before = vec![];
+        let mut pages_after = vec![];
+        let pages = pages
+            .into_iter()
+            .filter(|&p| p != before)
+            .collect::<Vec<_>>();
+
+        for page in self.pages()? {
+            if page > before {
+                pages_after.push(page);
+            } else {
+                pages_before.push(page);
+            }
+        }
+
+        let mut docs = vec![];
+        for group in [pages_before, pages, pages_after] {
+            if group.len() == 0 {
+                continue;
+            }
+            docs.push(self.select_pages(&Range::from(&group)?)?);
+        }
+
+        let doc = Self::merge(&docs, true)?;
+
+        Ok(doc)
+    }
+
+    pub fn pages(&self) -> Result<std::ops::Range<i32>> {
+        Ok(1..self.num_pages()? + 1)
+    }
+
     pub fn rotate_pages(&self, range: &Range, times: i32) -> Result {
         assert!(3 >= times);
         with_result!(cpdf_rotateBy(self.id, range.id, times * 90))

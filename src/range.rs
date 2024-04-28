@@ -1,10 +1,10 @@
 use crate::{
     bindings::{
-        cpdf_blankRange, cpdf_deleteRange, cpdf_even, cpdf_isInRange, cpdf_range, cpdf_rangeAdd,
-        cpdf_rangeUnion,
+        cpdf_all, cpdf_blankRange, cpdf_deleteRange, cpdf_difference, cpdf_even, cpdf_isInRange,
+        cpdf_range, cpdf_rangeAdd, cpdf_rangeUnion,
     },
     core::Result,
-    from_id, with_result,
+    from_id, with_result, Document,
 };
 
 pub struct Range {
@@ -26,6 +26,13 @@ impl Range {
 
     pub fn add(&self, page: i32) -> Result<Self> {
         from_id!(cpdf_rangeAdd(self.id, page))
+    }
+    pub fn all(doc: &Document) -> Result<Self> {
+        from_id!(cpdf_all(doc.id))
+    }
+
+    pub fn exclude(&self, other: &Range) -> Result<Self> {
+        from_id!(cpdf_difference(self.id, other.id))
     }
 
     pub fn from(pages: &Vec<i32>) -> Result<Self> {

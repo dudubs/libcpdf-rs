@@ -25,6 +25,28 @@ fn test_range() -> Result {
 }
 
 #[test]
+fn test_range_all() -> Result {
+    startup()?;
+
+    let doc = Document::blank(3, 1.0, 1.0)?;
+    let r = Range::all(doc)?;
+
+    assert_eq!(r.has(1)?, true);
+    assert_eq!(r.has(2)?, true);
+    assert_eq!(r.has(3)?, true);
+    assert_eq!(r.has(4)?, false);
+
+    let r = r.exclude(&Range::only(2)?)?;
+
+    assert_eq!(r.has(1)?, true);
+    assert_eq!(r.has(2)?, false);
+    assert_eq!(r.has(3)?, true);
+    assert_eq!(r.has(4)?, false);
+
+    Ok(())
+}
+
+#[test]
 fn test_multithreads() {
     let _ = (1..300)
         .map(|i| {
