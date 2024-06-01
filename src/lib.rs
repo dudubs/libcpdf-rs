@@ -1,4 +1,4 @@
-mod bindings;
+pub mod bindings;
 mod core;
 mod document;
 mod error;
