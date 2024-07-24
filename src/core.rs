@@ -1,6 +1,6 @@
 use std::{
     ffi::{CStr, CString},
-    path::Path,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex, RwLock},
 };
 
@@ -90,11 +90,17 @@ impl ToChars for String {
     }
 }
 
+impl ToChars for &PathBuf {
+    fn to_chars(&self) -> Result<*const i8> {
+        self.as_path().to_chars()
+    }
+}
+
 impl ToChars for Path {
     fn to_chars(&self) -> Result<*const i8> {
         let s = self
             .to_str()
-            .ok_or_else(|| Error::Message("()".to_string()))?
+            .ok_or_else(|| Error::Message("Can't convert to string".to_string()))?
             .to_string();
 
         Ok(CString::new(s)?.into_raw())

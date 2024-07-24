@@ -1,4 +1,7 @@
-use std::ffi::NulError;
+use std::{
+    ffi::NulError,
+    ops::{FromResidual, Try},
+};
 
 use thiserror::Error;
 
@@ -15,7 +18,17 @@ pub enum Error {
 
     #[error("{0}")]
     Message(String),
-
     #[error("no pages to move")]
     NoPagesToMove,
+}
+
+impl From<String> for Error {
+    fn from(value: String) -> Self {
+        Self::Message(value)
+    }
+}
+impl From<&str> for Error {
+    fn from(value: &str) -> Self {
+        Self::from(value.to_string())
+    }
 }
