@@ -1,5 +1,9 @@
 use core::slice;
-use std::{collections::BTreeSet, ffi::c_int, os::raw::c_void};
+use std::{
+    collections::BTreeSet,
+    ffi::{c_int, CStr},
+    os::raw::c_void,
+};
 
 use crate::{
     bindings::*,
@@ -89,6 +93,30 @@ impl Document {
 
     pub fn select_pages(&self, range: &Range) -> Result<Self> {
         from_id!(cpdf_selectPages(self.id, range.id))
+    }
+
+    pub fn get_page_label_string(&self, page_num: i32) -> Result<String> {
+        let label = with_result!(cpdf_getPageLabelStringForPage(self.id, page_num))?;
+
+        if label.is_null() {
+            return Ok("".to_string());
+        }
+
+        Ok(unsafe { CStr::from_ptr(label) }
+            .to_str()
+            .unwrap_or_default()
+            .to_string())
+    }
+
+    pub fn add_page_labels(&self, range: &Range, prefix: impl ToChars) -> Result {
+        with_result!(cpdf_addPageLabels(
+            self.id,
+            0,
+            prefix.to_chars()?,
+            0,
+            range.id,
+            0
+        ))
     }
 
     pub fn move_pages(&self, after: i32, pages: impl IntoIterator<Item = i32>) -> Result<Document> {

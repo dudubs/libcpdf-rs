@@ -434,12 +434,12 @@ extern "C" {
     pub fn cpdf_setMetadataDate(arg1: c_int, arg2: *const c_char);
 
     pub fn cpdf_addPageLabels(
-        arg1: c_int,
-        arg2: CpdfPageLabelStyle,
-        arg3: *const c_char,
-        arg4: c_int,
-        arg5: c_int,
-        arg6: c_int,
+        pdf: c_int,
+        style: CpdfPageLabelStyle,
+        prefix: *const c_char,
+        offset: c_int,
+        range: c_int,
+        progress: c_int,
     );
     pub fn cpdf_removePageLabels(arg1: c_int);
     pub fn cpdf_getPageLabelStringForPage(arg1: c_int, arg2: c_int) -> *mut c_char;
@@ -533,7 +533,6 @@ extern "C" {
         arg3: *const c_char,
         arg4: *const c_char,
     );
-    pub fn cpdf_getDictEntries(arg1: c_int, arg2: *const c_char, retlen: *mut c_int)
-        -> *mut c_void;
+    pub fn cpdf_getDictEntries(pdf: c_int, key: *const c_char, retlen: *mut c_int) -> *mut c_void;
     pub fn cpdf_removeClipping(arg1: c_int, arg2: c_int);
 }

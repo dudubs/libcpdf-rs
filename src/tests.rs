@@ -1,12 +1,20 @@
 #![cfg(test)]
 
+use std::ffi::c_int;
+use std::ffi::CStr;
+use std::ffi::CString;
+use std::fs;
 use std::thread;
 
 use super::core::*;
 use super::document::*;
 use super::range::*;
+use crate::bindings::cpdf_free;
+use crate::bindings::cpdf_getDictEntries;
 use crate::bindings::CpdfPosition;
+use crate::bindings::CPDF_ANCHOR_BOTTOMRIGHT;
 use crate::bindings::CPDF_ANCHOR_DIAGONAL;
+use crate::bindings::CPDF_ANCHOR_RIGHT;
 use crate::bindings::CPDF_FONT_COURIER;
 
 #[test]
@@ -325,6 +333,70 @@ fn expect_to_move_pages() -> Result {
         &d.move_pages(2, []),
         Err(super::error::Error::NoPagesToMove)
     ));
+
+    Ok(())
+}
+
+#[test]
+fn expect_to_set_page_labels() -> Result {
+    startup()?;
+
+    let doc = Document::blank(1, 200., 300.)?;
+
+    // dbg!(doc
+    //     .pages()?
+    //     .flat_map(|n| doc.get_page_label_string(n))
+    //     .collect::<Vec<_>>());
+    // doc.add_page_labels(&Range::only(1)?, "hello1")?;
+    // dbg!(doc
+    //     .pages()?
+    //     .flat_map(|n| doc.get_page_label_string(n))
+    //     .collect::<Vec<_>>());
+
+    // doc.add_page_labels(&Range::only(2)?, "world2")?;
+    // dbg!(doc
+    //     .pages()?
+    //     .flat_map(|n| doc.get_page_label_string(n))
+    //     .collect::<Vec<_>>());
+
+    // doc.add_page_labels(&Range::only(3)?, "world3")?;
+    // dbg!(doc
+    //     .pages()?
+    //     .flat_map(|n| doc.get_page_label_string(n))
+    //     .collect::<Vec<_>>());
+
+    doc.add_text_simple(
+        &Range::only(1)?,
+        "works",
+        CpdfPosition {
+            cpdf_anchor: CPDF_ANCHOR_BOTTOMRIGHT,
+            cpdf_coord1: 0.0,
+            cpdf_coord2: 0.0,
+        },
+        CPDF_FONT_COURIER,
+        0.0,
+    )?;
+
+    let mut v = vec![0; 0x1000];
+
+    let mut retlet: c_int = 0;
+
+    let key = CString::new("/Root").unwrap();
+    let key_ptr = key.as_ptr();
+
+    let ret = unsafe { cpdf_getDictEntries(doc.id, key_ptr, &mut retlet) };
+
+    dbg!(ret);
+
+    dbg!(unsafe { CStr::from_ptr(ret as _).to_string_lossy().to_string() });
+    unsafe { cpdf_free(ret) };
+
+    // doc.save_as(
+    //     fs::canonicalize("../../testdata")?
+    //         .join("_test.pdf")
+    //         .to_str()
+    //         .unwrap(),
+    // )?;
 
     Ok(())
 }
