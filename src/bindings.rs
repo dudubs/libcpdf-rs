@@ -158,16 +158,17 @@ extern "C" {
     pub fn cpdf_decryptPdf(arg1: c_int, arg2: *const c_char);
     pub fn cpdf_decryptPdfOwner(arg1: c_int, arg2: *const c_char);
     pub fn cpdf_toFileEncrypted(
-        arg1: c_int,
-        arg2: c_int,
-        arg3: *mut c_int,
-        arg4: c_int,
-        arg5: *const c_char,
-        arg6: *const c_char,
-        arg7: c_int,
-        arg8: c_int,
-        arg9: *const c_char,
+        pdf: c_int,
+        encryption_method: CpdfEncryptionMethod,
+        permissions: *mut c_int,
+        permission_length: c_int,
+        owner_password: *const c_char,
+        user_password: *const c_char,
+        linearize: c_int,
+        makeid: c_int,
+        filename: *const c_char,
     );
+
     pub fn cpdf_toFileEncryptedExt(
         arg1: c_int,
         arg2: c_int,

@@ -2,8 +2,11 @@ use core::slice;
 use std::{
     collections::BTreeSet,
     ffi::{c_int, CStr},
+    fmt::Display,
     os::raw::c_void,
 };
+
+use serde::Serialize;
 
 use crate::{
     bindings::*,
@@ -17,6 +20,50 @@ use crate::{
 #[derive(Debug)]
 pub struct Document {
     pub id: i32,
+}
+
+#[derive(Debug, Serialize, Default)]
+pub struct Permissions {
+    pub no_edit: bool,
+    pub no_print: bool,
+    pub no_copy: bool,
+    pub no_annot: bool,
+    pub no_forms: bool,
+    pub no_extract: bool,
+    pub no_assemble: bool,
+    pub no_hq_print: bool,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub enum EncriptionMethod {
+    PDF40BIT = 0,
+    PDF128BIT = 1,
+    AES128BIT_FALSE = 2,
+    AES128BITTRUE = 3,
+    AES256BITFALSE = 4,
+    AES256BITTRUE = 5,
+    AES256BITISOFALSE = 6,
+    AES256BITISOTRUE = 7,
+}
+
+impl TryFrom<c_int> for EncriptionMethod {
+    type Error = crate::Error;
+
+    fn try_from(value: c_int) -> std::result::Result<Self, Self::Error> {
+        Ok(match dbg!(value) {
+            x if x == EncriptionMethod::PDF40BIT as _ => EncriptionMethod::PDF40BIT,
+            x if x == EncriptionMethod::PDF128BIT as _ => EncriptionMethod::PDF128BIT,
+            x if x == EncriptionMethod::AES128BIT_FALSE as _ => EncriptionMethod::AES128BIT_FALSE,
+            x if x == EncriptionMethod::AES128BITTRUE as _ => EncriptionMethod::AES128BITTRUE,
+            x if x == EncriptionMethod::AES256BITFALSE as _ => EncriptionMethod::AES256BITFALSE,
+            x if x == EncriptionMethod::AES256BITTRUE as _ => EncriptionMethod::AES256BITTRUE,
+            x if x == EncriptionMethod::AES256BITISOFALSE as _ => {
+                EncriptionMethod::AES256BITISOFALSE
+            }
+            x if x == EncriptionMethod::AES256BITISOTRUE as _ => EncriptionMethod::AES256BITISOTRUE,
+            _ => Err("Unexpected encription method")?,
+        })
+    }
 }
 
 impl Drop for Document {
@@ -220,6 +267,7 @@ impl Document {
     pub fn fit_to_width(&self, width: f64, max_deviation: f64) -> Result<bool> {
         let mut did = false;
         for page_num in 1..self.num_pages()? + 1 {
+            dbg!(&did, &page_num);
             let rotation = self.page_rotation(page_num)?;
 
             let (media_width, media_height) = self.media_size(page_num)?;
@@ -248,6 +296,71 @@ impl Document {
     // can returned 0,1,2,3
     pub fn page_rotation(&self, page_num: i32) -> Result<i32> {
         with_result!(cpdf_getPageRotation(self.id, page_num) / 90)
+    }
+
+    pub fn encription_kind(&self) -> Result<Option<EncriptionMethod>> {
+        let n = with_result!(cpdf_encryptionKind(self.id))?;
+        dbg!(&n);
+        if n == 0 {
+            return Ok(None);
+        }
+        Ok(Some((n - 1).try_into()?))
+    }
+
+    pub fn perms(&self) -> Result<Permissions> {
+        Ok(Permissions {
+            no_edit: 0 != with_result!(cpdf_hasPermission(self.id, CPDF_PERMISSION_NOEDIT))?,
+            no_print: 0 != with_result!(cpdf_hasPermission(self.id, CPDF_PERMISSION_NOPRINT))?,
+            no_copy: 0 != with_result!(cpdf_hasPermission(self.id, CPDF_PERMISSION_NOCOPY))?,
+            no_annot: 0 != with_result!(cpdf_hasPermission(self.id, CPDF_PERMISSION_NOANNOT))?,
+            no_forms: 0 != with_result!(cpdf_hasPermission(self.id, CPDF_PERMISSION_NOFORMS))?,
+            no_extract: 0 != with_result!(cpdf_hasPermission(self.id, CPDF_PERMISSION_NOEXTRACT))?,
+            no_assemble: 0
+                != with_result!(cpdf_hasPermission(self.id, CPDF_PERMISSION_NOASSEMBLE))?,
+            no_hq_print: 0 != with_result!(cpdf_hasPermission(self.id, CPDF_PERMISSION_NOHQPRINT))?,
+        })
+    }
+
+    pub fn is_encrypted(&self) -> Result<bool> {
+        Ok((with_result!(cpdf_isEncrypted(self.id))? != 0))
+    }
+
+    pub fn dev_encrypt(
+        &self,
+        method: EncriptionMethod,
+        perms: Permissions,
+        owner_password: impl ToChars,
+        user_password: impl ToChars,
+        linearize: bool,
+        out_path: impl ToChars,
+    ) -> Result<()> {
+        let mut perms = [
+            perms.no_edit.then(|| CPDF_PERMISSION_NOEDIT),
+            perms.no_print.then(|| CPDF_PERMISSION_NOPRINT),
+            perms.no_copy.then(|| CPDF_PERMISSION_NOCOPY),
+            perms.no_annot.then(|| CPDF_PERMISSION_NOANNOT),
+            perms.no_forms.then(|| CPDF_PERMISSION_NOFORMS),
+            perms.no_extract.then(|| CPDF_PERMISSION_NOEXTRACT),
+            perms.no_assemble.then(|| CPDF_PERMISSION_NOASSEMBLE),
+            perms.no_hq_print.then(|| CPDF_PERMISSION_NOHQPRINT),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
+
+        with_result!(cpdf_toFileEncrypted(
+            self.id,
+            method as _,
+            perms.as_mut_ptr(),
+            perms.len() as _,
+            owner_password.to_chars()?,
+            user_password.to_chars()?,
+            linearize as _,
+            false as _,
+            out_path.to_chars()?,
+        ))?;
+
+        Ok(())
     }
 }
 

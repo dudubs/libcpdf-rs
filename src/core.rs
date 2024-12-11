@@ -62,7 +62,10 @@ pub fn __with_result<T>(f: impl FnOnce() -> Result<T>) -> Result<T> {
         };
 
         match unsafe { last_error() } {
-            Some(err) => Err(Error::Message(err.to_string())),
+            Some(err) => {
+                dbg!(&err);
+                Err(Error::Message(err.to_string()))
+            }
             None => Ok(val),
         }
     })
