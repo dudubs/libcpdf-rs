@@ -362,6 +362,15 @@ impl Document {
 
         Ok(())
     }
+
+    pub fn attach_file(&self, filename: impl ToChars, data: &[u8]) -> Result<()> {
+        with_result!(cpdf_attachFileFromMemory(
+            data.as_ptr() as *mut c_void,
+            data.len() as i32,
+            filename.to_chars()?,
+            self.id,
+        ))
+    }
 }
 
 #[derive(Debug, PartialEq)]
