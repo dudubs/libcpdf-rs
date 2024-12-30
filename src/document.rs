@@ -166,14 +166,17 @@ impl Document {
         ))
     }
 
-    pub fn move_pages(&self, after: i32, pages: impl IntoIterator<Item = i32>) -> Result<Document> {
+    pub fn move_pages(&self, after: i32, pages: &Vec<i32>) -> Result<Document> {
         let mut pages_before = vec![];
         let mut pages_after = vec![];
+
         let pages = pages
+            .clone()
             .into_iter()
             .filter(|&p| p != after)
-            .collect::<BTreeSet<_>>();
+            .collect::<BTreeSet<i32>>();
 
+        dbg!(&pages);
         if pages.len() == 0 {
             return Err(Error::NoPagesToMove);
         }
@@ -191,16 +194,14 @@ impl Document {
         }
 
         let mut docs = vec![];
-        for group in [
-            pages_before,
-            pages.into_iter().collect::<Vec<_>>(),
-            pages_after,
-        ] {
+        for group in [pages_before, pages.into_iter().collect(), pages_after] {
             if group.len() == 0 {
                 continue;
             }
             docs.push(self.select_pages(&Range::from(&group)?)?);
         }
+
+        // dbg!(&docs);
 
         let doc = Self::merge(&docs, true)?;
 

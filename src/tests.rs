@@ -295,6 +295,18 @@ fn add_test_text(doc: &Document, page_num: i32, text: impl ToChars) -> Result {
 }
 
 #[test]
+fn debug_move_pages() {
+    startup().unwrap();
+    set_fast().unwrap();
+    let doc = Document::from_file(
+        &fs::canonicalize("../../testdata").unwrap().join("big.pdf"),
+        "",
+    )
+    .unwrap();
+    doc.move_pages(2, &vec![1, 2]).unwrap();
+}
+
+#[test]
 fn expect_to_move_pages() -> Result {
     startup()?;
 
@@ -317,20 +329,20 @@ fn expect_to_move_pages() -> Result {
         d
     };
 
-    assert_eq!(stat(&d.move_pages(0, [2, 3])?)?, [2, 3, 1, 4, 5]);
-    assert_eq!(stat(&d.move_pages(1, [2, 3])?)?, [1, 2, 3, 4, 5]);
-    assert_eq!(stat(&d.move_pages(2, [2, 3])?)?, [1, 2, 3, 4, 5]);
-    assert_eq!(stat(&d.move_pages(3, [2, 3])?)?, [1, 3, 2, 4, 5]);
-    assert_eq!(stat(&d.move_pages(4, [2, 3])?)?, [1, 4, 2, 3, 5]);
-    assert_eq!(stat(&d.move_pages(5, [2, 3])?)?, [1, 4, 5, 2, 3]);
+    assert_eq!(stat(&d.move_pages(0, &vec![2, 3])?)?, [2, 3, 1, 4, 5]);
+    assert_eq!(stat(&d.move_pages(1, &vec![2, 3])?)?, [1, 2, 3, 4, 5]);
+    assert_eq!(stat(&d.move_pages(2, &vec![2, 3])?)?, [1, 2, 3, 4, 5]);
+    assert_eq!(stat(&d.move_pages(3, &vec![2, 3])?)?, [1, 3, 2, 4, 5]);
+    assert_eq!(stat(&d.move_pages(4, &vec![2, 3])?)?, [1, 4, 2, 3, 5]);
+    assert_eq!(stat(&d.move_pages(5, &vec![2, 3])?)?, [1, 4, 5, 2, 3]);
 
     assert!(matches!(
-        &d.move_pages(2, [2]),
+        &d.move_pages(2, &vec![2]),
         Err(super::error::Error::NoPagesToMove)
     ));
 
     assert!(matches!(
-        &d.move_pages(2, []),
+        &d.move_pages(2, &vec![]),
         Err(super::error::Error::NoPagesToMove)
     ));
 
@@ -376,8 +388,6 @@ fn expect_to_set_page_labels() -> Result {
         CPDF_FONT_COURIER,
         0.0,
     )?;
-
-    let mut v = vec![0; 0x1000];
 
     let mut retlet: c_int = 0;
 
