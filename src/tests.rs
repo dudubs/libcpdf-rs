@@ -410,3 +410,25 @@ fn expect_to_set_page_labels() -> Result {
 
     Ok(())
 }
+
+#[test]
+fn test_json_doc() {
+    startup().unwrap();
+
+    let doc = Document::from_file(&fs::canonicalize("testdata/3pages.pdf").unwrap(), "").unwrap();
+
+    let data = doc.to_json().unwrap();
+
+    let v: serde_json::Value = serde_json::from_str(&data).unwrap();
+
+    let doc = Document::from_json(v.to_string().as_bytes()).unwrap();
+
+    doc.save_as(
+        &fs::canonicalize("testdata")
+            .unwrap()
+            .join("_3pages_after_json.pdf"),
+    )
+    .unwrap();
+
+    // let doc = Document::from_json(data).unwrap();
+}

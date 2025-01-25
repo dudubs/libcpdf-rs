@@ -97,7 +97,7 @@ pub struct CpdfPosition {
     pub cpdf_coord2: f64,
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn cpdf_startup(arg1: *const *const c_char);
     pub fn cpdf_version() -> *mut c_char;
     pub fn cpdf_setFast();
@@ -490,15 +490,15 @@ extern "C" {
     pub fn cpdf_removeFonts(arg1: c_int);
     pub fn cpdf_copyFont(arg1: c_int, arg2: c_int, arg3: c_int, arg4: c_int, arg5: *const c_char);
     pub fn cpdf_outputJSON(arg1: *const c_char, arg2: c_int, arg3: c_int, arg4: c_int, arg5: c_int);
-    pub fn cpdf_outputJSONMemory(
-        arg1: c_int,
-        arg2: c_int,
-        arg3: c_int,
-        arg4: c_int,
-        arg5: *mut c_int,
+    pub unsafe fn cpdf_outputJSONMemory(
+        pdf: c_int,
+        parse_content: c_int,
+        no_stream_data: c_int,
+        decompress_streams: c_int,
+        length: *mut c_int,
     ) -> *mut c_void;
     pub fn cpdf_fromJSON(arg1: *const c_char) -> c_int;
-    pub fn cpdf_fromJSONMemory(arg1: *mut c_void, arg2: c_int) -> c_int;
+    pub fn cpdf_fromJSONMemory(data: *mut c_void, len: c_int) -> c_int;
     pub fn cpdf_startGetOCGList(pdf: c_int) -> c_int;
     pub fn cpdf_OCGListEntry(i: c_int) -> *mut c_char;
     pub fn cpdf_endGetOCGList();

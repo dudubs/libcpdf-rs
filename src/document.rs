@@ -1,5 +1,6 @@
 use core::slice;
 use std::{
+    borrow::Cow,
     collections::BTreeSet,
     ffi::{c_int, CStr},
     fmt::Display,
@@ -51,16 +52,18 @@ impl TryFrom<c_int> for EncriptionMethod {
 
     fn try_from(value: c_int) -> std::result::Result<Self, Self::Error> {
         Ok(match dbg!(value) {
-            x if x == EncriptionMethod::PDF40BIT as _ => EncriptionMethod::PDF40BIT,
-            x if x == EncriptionMethod::PDF128BIT as _ => EncriptionMethod::PDF128BIT,
-            x if x == EncriptionMethod::AES128BIT_FALSE as _ => EncriptionMethod::AES128BIT_FALSE,
-            x if x == EncriptionMethod::AES128BITTRUE as _ => EncriptionMethod::AES128BITTRUE,
-            x if x == EncriptionMethod::AES256BITFALSE as _ => EncriptionMethod::AES256BITFALSE,
-            x if x == EncriptionMethod::AES256BITTRUE as _ => EncriptionMethod::AES256BITTRUE,
-            x if x == EncriptionMethod::AES256BITISOFALSE as _ => {
+            x if x == EncriptionMethod::PDF40BIT as i32 => EncriptionMethod::PDF40BIT,
+            x if x == EncriptionMethod::PDF128BIT as i32 => EncriptionMethod::PDF128BIT,
+            x if x == EncriptionMethod::AES128BIT_FALSE as i32 => EncriptionMethod::AES128BIT_FALSE,
+            x if x == EncriptionMethod::AES128BITTRUE as i32 => EncriptionMethod::AES128BITTRUE,
+            x if x == EncriptionMethod::AES256BITFALSE as i32 => EncriptionMethod::AES256BITFALSE,
+            x if x == EncriptionMethod::AES256BITTRUE as i32 => EncriptionMethod::AES256BITTRUE,
+            x if x == EncriptionMethod::AES256BITISOFALSE as i32 => {
                 EncriptionMethod::AES256BITISOFALSE
             }
-            x if x == EncriptionMethod::AES256BITISOTRUE as _ => EncriptionMethod::AES256BITISOTRUE,
+            x if x == EncriptionMethod::AES256BITISOTRUE as i32 => {
+                EncriptionMethod::AES256BITISOTRUE
+            }
             _ => Err("Unexpected encription method")?,
         })
     }
@@ -372,6 +375,49 @@ impl Document {
             self.id,
         ))
     }
+
+    pub fn to_json(&self) -> Result<String> {
+        let mut length: i32 = 0;
+        let ptr = with_result!(cpdf_outputJSONMemory(
+            //
+            self.id,
+            1,
+            0,
+            1,
+            &mut length as _
+        ))?;
+
+        let data: Vec<u8> =
+            unsafe { slice::from_raw_parts_mut(ptr as *mut _, length as usize) }.to_vec();
+
+        with_result!(cpdf_free(ptr))?;
+
+        let data = String::from_utf8_lossy(&data).to_string();
+
+        Ok(data)
+    }
+
+    pub fn from_json(data: &[u8]) -> Result<Self> {
+        from_id!(cpdf_fromJSONMemory(data.as_ptr() as _, data.len() as _))
+    }
+    // pub fn from_mem(data: Vec<u8>, password: impl ToChars) -> Result<Self> {
+    //     from_id!(cpdf_fromMemory(
+    //         data.as_ptr() as *mut c_void,
+    //         data.len() as i32,
+    //         password.to_chars()?,
+    //     ))
+    // }
+
+    // pub fn to_vec(&self) -> Result<Vec<u8>> {
+    //     let mut length: i32 = 0;
+
+    //     let ptr = with_result!(cpdf_toMemory(self.id, 0, 0, &mut length as *mut c_int))?;
+
+    //     let vec = unsafe { slice::from_raw_parts_mut(ptr as *mut _, length as usize) }.to_vec();
+
+    //     with_result!(cpdf_free(ptr))?;
+    //     Ok(vec)
+    // }
 }
 
 #[derive(Debug, PartialEq)]
