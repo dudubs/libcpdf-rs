@@ -271,7 +271,6 @@ impl Document {
     pub fn fit_to_width(&self, width: f64, max_deviation: f64) -> Result<bool> {
         let mut did = false;
         for page_num in 1..self.num_pages()? + 1 {
-            dbg!(&did, &page_num);
             let rotation = self.page_rotation(page_num)?;
 
             let (media_width, media_height) = self.media_size(page_num)?;
