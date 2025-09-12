@@ -94,10 +94,19 @@ pub const CPDF_PAGELABELSTYLE_LOWERCASELETTERS: CpdfPageLabelStyle = 4;
 pub struct CpdfPosition {
     pub cpdf_anchor: c_int,
     pub cpdf_coord1: f64,
+    //     Meaning of anchor
+    // The anchor lets you control how the (x,y) relates to the text:
+    // 0 → Bottom-left of text at (x,y)
+    // 1 → Top-left of text at (x,y)
+    // 2 → Centre of text at (x,y)
+    // 3 → Top-centre
+    // 4 → Bottom-centre
+    // (some builds may also support right-aligned anchors)
     pub cpdf_coord2: f64,
 }
 
 unsafe extern "C" {
+
     pub fn cpdf_startup(arg1: *const *const c_char);
     pub fn cpdf_version() -> *mut c_char;
     pub fn cpdf_setFast();
@@ -253,28 +262,28 @@ unsafe extern "C" {
     );
     pub fn cpdf_combinePages(arg1: c_int, arg2: c_int) -> c_int;
     pub fn cpdf_addText(
-        arg1: c_int,
-        arg2: c_int,
-        arg3: c_int,
-        arg4: *const c_char,
-        arg5: CpdfPosition,
-        arg6: f64,
-        arg7: c_int,
-        arg8: CpdfFont,
-        arg9: f64,
-        arg10: f64,
-        arg11: f64,
-        arg12: f64,
-        arg13: c_int,
-        arg14: c_int,
-        arg15: c_int,
-        arg16: f64,
-        arg17: CpdfJustification,
-        arg18: c_int,
-        arg19: c_int,
-        arg20: *const c_char,
-        arg21: f64,
-        arg22: c_int,
+        metrics: c_int,
+        pdf: c_int,
+        range: c_int,
+        text: *const c_char,
+        pos: CpdfPosition,
+        line_spacing: f64,
+        bates: c_int,
+        font: CpdfFont,
+        font_size: f64,
+        r: f64,
+        g: f64,
+        b: f64,
+        underneath: c_int,
+        relativeToCropBox: c_int,
+        outline: c_int,
+        opacity: f64,
+        justification: CpdfJustification,
+        midline: c_int,
+        topline: c_int,
+        filename: *const c_char,
+        linewidth: f64,
+        embed_fonts: c_int,
     );
     pub fn cpdf_addTextSimple(
         pdf: c_int,

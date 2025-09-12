@@ -1437,3 +1437,17 @@ void *cpdf_getDictEntries(int, const char[], int *retlen);
  * given range.
  */
 void cpdf_removeClipping(int, int);
+
+void cpdf_addRect(
+    int pdf,            // PDF handle
+    int range,          // Page range
+    double x,           // lower-left x
+    double y,           // lower-left y
+    double width,       // rectangle width
+    double height,      // rectangle height
+    double r,           // red 0.0–1.0
+    double g,           // green 0.0–1.0
+    double b,           // blue 0.0–1.0
+    int filled,         // 1 = fill, 0 = outline
+    double opacity      // 1.0 = opaque, 0.0 = transparent
+);

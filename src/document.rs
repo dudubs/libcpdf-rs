@@ -5,6 +5,7 @@ use std::{
     ffi::{c_int, CStr},
     fmt::Display,
     os::raw::c_void,
+    ptr::null,
 };
 
 use serde::Serialize;
@@ -98,6 +99,39 @@ impl Document {
 
     pub fn save_as(&self, path: impl ToChars) -> Result {
         with_result!(cpdf_toFile(self.id, path.to_chars()?, 0, 0)).map(|_| ())
+    }
+
+    pub fn add_text(&self) -> Result {
+        let range = Range::only(1)?;
+
+        with_result!(cpdf_addText(
+            0, // 0,
+            self.id,
+            range.id,
+            "hello".to_chars()?,
+            CpdfPosition {
+                cpdf_anchor: 0,
+                cpdf_coord1: 0.0,
+                cpdf_coord2: 0.0
+            },
+            1.0,
+            0,                              //bates,
+            CPDF_FONT_HELVETICA,            //font,
+            10.0,                           //font_size,
+            0.0,                            //r,
+            0.0,                            //g,
+            0.0,                            //b,
+            0,                              //underneath,
+            0,                              //relativeToCropBox,
+            0,                              //outline,
+            1.0,                            //opacity,
+            CPDF_JUSTIFICATION_LEFTJUSTIFY, //justification,
+            0,                              //midline,topline
+            0,
+            "".to_chars()?, //filename,
+            0.0,            //linewidth,
+            0,              //embed_fonts,
+        ))
     }
 
     pub fn add_text_simple(
