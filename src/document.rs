@@ -302,6 +302,11 @@ impl Document {
         ))
     }
 
+    pub fn squeeze(self) -> Result<Self> {
+        with_result!(cpdf_squeezeInMemory(self.id))?;
+        Ok(self)
+    }
+
     pub fn fit_to_width(&self, width: f64, max_deviation: f64) -> Result<bool> {
         let mut did = false;
         for page_num in 1..self.num_pages()? + 1 {
