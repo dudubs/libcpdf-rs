@@ -308,7 +308,15 @@ impl Document {
     }
 
     pub fn fit_to_width(&self, width: f64, max_deviation: f64) -> Result<bool> {
-        let mut did = false;
+        Ok(self.fit_to_width2(width, max_deviation)?.len() > 0)
+    }
+
+    pub fn fit_to_width2(
+        &self,
+        width: f64,
+        max_deviation: f64,
+    ) -> Result<Vec<(i32, (f64, (f64, f64)))>> {
+        let mut original_scales = Vec::new();
         for page_num in 1..self.num_pages()? + 1 {
             let rotation = self.page_rotation(page_num)?;
 
@@ -321,8 +329,6 @@ impl Document {
                 continue;
             }
 
-            did = true;
-
             let mut scale = width / media_width;
 
             if rotation % 2 != 0 {
@@ -330,9 +336,10 @@ impl Document {
                 scale *= media_width / media_height;
             }
 
+            original_scales.push((page_num, (scale, (media_width, media_height))));
             self.scale_pages(&Range::only(page_num)?, scale, scale)?;
         }
-        Ok(did)
+        Ok(original_scales)
     }
 
     // can returned 0,1,2,3
